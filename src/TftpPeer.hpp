@@ -18,7 +18,8 @@ public:
     TftpPeer(boost::asio::io_context &io_context, int port)
         : socket_data_(io_context, udp::endpoint(udp::v6(), port)) {
         std::cout << "bind to port " << port << std::endl;
-        tftp::TftpReadRequestPacket p("file");
+
+        tftp::TftpWriteRequestPacket p("file", "size");
         p.dump();
         std::cout<<p.get_filename()<<std::endl;
         std::cout<<p.get_mode()<<std::endl;

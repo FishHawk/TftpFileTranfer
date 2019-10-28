@@ -42,11 +42,14 @@ public:
     }
 
     int is_legal_string(unsigned int offset) {
-        if (offset >= data_.size()) return -1;
+        if (offset >= data_.size())
+            return -1;
 
         int i = offset;
-        while(data_[i]!=0 && i < data_.size()) i++;
-        if (i = data_.size()) return -1;
+        while (data_[i] != 0 && i < data_.size())
+            i++;
+        if (i = data_.size())
+            return -1;
 
         return i - offset;
     }
@@ -79,35 +82,67 @@ public:
 
 class TftpReadRequestPacket : public Packet {
 private:
-    char *filename_;
-    char *mode_;
+    unsigned int offset_filename_;
+    unsigned int offset_mode_;
 
 public:
     TftpReadRequestPacket(std::string filename) {
         add_word(opcode_rrq);
 
+        offset_filename_ = data_.size();
         add_string(filename);
         add_byte(0);
 
+        offset_mode_ = data_.size();
         add_string(default_mode);
         add_byte(0);
-
-        filename_ = (char *)(&data_[2]);
-        mode_ = (char *)(&data_[2 + filename.size() + 1]);
-    }
-
-    TftpReadRequestPacket(Packet &p) {
-        data_ = std::move(p.get_data());
-        int len = is_legal_string(2);
-        if (len > 0) filename_ = (char *)(&data_[2]);
-        else exit(0);
     }
 
     std::string get_filename() {
-        return std::string(filename_);
+        return std::string((char *)(&data_[offset_filename_]));
     }
+
     std::string get_mode() {
-        return std::string(mode_);
+        return std::string((char *)(&data_[offset_mode_]));
+    }
+};
+
+class TftpWriteRequestPacket : public Packet {
+private:
+    unsigned int offset_filename_;
+    unsigned int offset_mode_;
+    unsigned int offset_size_;
+
+public:
+    TftpWriteRequestPacket(std::string filename, std::string size) {
+        add_word(opcode_wrq);
+
+        offset_filename_ = data_.size();
+        add_string(filename);
+        add_byte(0);
+
+        offset_mode_ = data_.size();
+        add_string(default_mode);
+        add_byte(0);
+
+        add_string("tsize");
+        add_byte(0);
+
+        offset_size_ = data_.size();
+        add_string(size);
+        add_byte(0);
+    }
+
+    std::string get_filename() {
+        return std::string((char *)(&data_[offset_filename_]));
+    }
+
+    std::string get_mode() {
+        return std::string((char *)(&data_[offset_mode_]));
+    }
+
+    std::string get_size() {
+        return std::string((char *)(&data_[offset_size_]));
     }
 };
 
