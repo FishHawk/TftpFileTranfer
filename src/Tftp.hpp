@@ -119,10 +119,14 @@ public:
 };
 
 class TftpWrqPacket : public Packet {
+    friend TftpWrqPacket *parsing_wrq(Packet &packet);
+
 private:
     unsigned int offset_filename_;
     unsigned int offset_mode_;
     unsigned int offset_size_;
+
+    TftpWrqPacket(Packet &p) : Packet(p) {}
 
 public:
     TftpWrqPacket(std::string filename, std::string size) {
