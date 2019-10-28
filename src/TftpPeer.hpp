@@ -2,14 +2,14 @@
 #define TFTP_PEER_HPP
 
 #include <boost/array.hpp>
-#include <boost/bind.hpp>
 #include <boost/asio.hpp>
+#include <boost/bind.hpp>
 
 #include "Tftp.hpp"
+#include "TftpParser.hpp"
 
 using boost::asio::ip::udp;
 using boost::asio::local::datagram_protocol;
-
 
 class TftpPeer {
 public:
@@ -19,10 +19,19 @@ public:
         : socket_data_(io_context, udp::endpoint(udp::v6(), port)) {
         std::cout << "bind to port " << port << std::endl;
 
-        tftp::TftpErrorPacket p(12, "sss");
+        tftp::TftpRrqPacket p("2213123");
         p.dump();
-        std::cout<<p.get_error_code()<<std::endl;
-        std::cout<<p.get_error_msg()<<std::endl;
+
+        tftp::Packet pp(p.get_data());
+        pp.dump();
+
+        auto ppp = tftp::parsing_rrq(pp);
+        if (ppp) {
+            ppp->dump();
+            std::cout << ppp->get_filename() << std::endl;
+            std::cout << ppp->get_mode() << std::endl;
+        } else
+            std::cout << "wrong" << std::endl;
     }
 
 private:
@@ -31,7 +40,6 @@ private:
     // boost::array<char, 1> recv_buffer_;
 
     void start_transmission(std::string filename, std::string dst_ip, int dst_port) {
-        
     }
 
     void start_receive() {

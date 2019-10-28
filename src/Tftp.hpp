@@ -2,7 +2,6 @@
 #define TFTP_HPP
 
 #include <cstdint>
-#include <fstream>
 #include <iostream>
 #include <vector>
 
@@ -56,7 +55,7 @@ public:
         int i = offset;
         while (data_[i] != 0 && i < data_.size())
             i++;
-        if (i = data_.size())
+        if (i == data_.size())
             return -1;
 
         return i - offset;
@@ -89,9 +88,13 @@ public:
 };
 
 class TftpRrqPacket : public Packet {
+    friend TftpRrqPacket *parsing_rrq(Packet &packet);
+
 private:
     unsigned int offset_filename_;
     unsigned int offset_mode_;
+
+    TftpRrqPacket(Packet &p) : Packet(p) {}
 
 public:
     TftpRrqPacket(std::string filename) {
@@ -165,7 +168,7 @@ public:
         block_ = block;
         add_word(block);
 
-        for (int i = 0; i< file_data.size(); i++) {
+        for (int i = 0; i < file_data.size(); i++) {
             add_byte(file_data[i]);
         }
     }
