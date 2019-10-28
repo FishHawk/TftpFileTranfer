@@ -157,7 +157,6 @@ public:
 class TftpDataPacket : public Packet {
 private:
     uint16_t block_;
-    unsigned int offset_file_data_;
 
 public:
     TftpDataPacket(uint16_t block, std::vector<uint8_t> file_data) {
@@ -166,7 +165,6 @@ public:
         block_ = block;
         add_word(block);
 
-        offset_file_data_ = data_.size();
         for (int i = 0; i< file_data.size(); i++) {
             add_byte(file_data[i]);
         }
@@ -178,6 +176,23 @@ public:
 
     unsigned int get_file_data_offset() {
         return 4;
+    }
+};
+
+class TftpAckPacket : public Packet {
+private:
+    uint16_t block_;
+
+public:
+    TftpAckPacket(uint16_t block) {
+        add_word(opcode_data);
+
+        block_ = block;
+        add_word(block);
+    }
+
+    uint16_t get_block() {
+        return get_word(2);
     }
 };
 
