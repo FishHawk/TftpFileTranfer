@@ -5,19 +5,29 @@
 #include <boost/bind.hpp>
 #include <boost/asio.hpp>
 
+#include "Tftp.hpp"
+
 using boost::asio::ip::udp;
 using boost::asio::local::datagram_protocol;
 
+
 class TftpPeer {
 public:
+    static constexpr int default_port = 10000;
+
     TftpPeer(boost::asio::io_context &io_context, int port)
         : socket_data_(io_context, udp::endpoint(udp::v6(), port)) {
+        std::cout << "bind to port " << port << std::endl;
     }
 
 private:
     udp::socket socket_data_;
     // udp::endpoint remote_endpoint_;
     // boost::array<char, 1> recv_buffer_;
+
+    void start_transmission(std::string filename, std::string dst_ip, int dst_port) {
+        
+    }
 
     void start_receive() {
         // socket_data_.async_receive_from(
