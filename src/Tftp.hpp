@@ -9,7 +9,7 @@
 namespace tftp {
 static const uint16_t opcode_rrq = 1;
 static const uint16_t opcode_wrq = 2;
-static const uint16_t opcode_dara = 3;
+static const uint16_t opcode_data = 3;
 static const uint16_t opcode_ack = 4;
 static const uint16_t opcode_error = 5;
 
@@ -30,9 +30,17 @@ public:
         data_.push_back(b);
     }
 
+    uint8_t get_byte(unsigned int offset) {
+        return data_[offset];
+    }
+
     void add_word(uint16_t w) {
         add_byte(*(((uint8_t *)&w) + 1));
         add_byte(*((uint8_t *)&w));
+    }
+
+    uint16_t get_word(unsigned int offset) {
+        return (((uint16_t)data_[offset]) << 8) + data_[offset + 1];
     }
 
     void add_string(std::string s) {
@@ -80,13 +88,13 @@ public:
     }
 };
 
-class TftpReadRequestPacket : public Packet {
+class TftpRrqPacket : public Packet {
 private:
     unsigned int offset_filename_;
     unsigned int offset_mode_;
 
 public:
-    TftpReadRequestPacket(std::string filename) {
+    TftpRrqPacket(std::string filename) {
         add_word(opcode_rrq);
 
         offset_filename_ = data_.size();
@@ -107,14 +115,14 @@ public:
     }
 };
 
-class TftpWriteRequestPacket : public Packet {
+class TftpWrqPacket : public Packet {
 private:
     unsigned int offset_filename_;
     unsigned int offset_mode_;
     unsigned int offset_size_;
 
 public:
-    TftpWriteRequestPacket(std::string filename, std::string size) {
+    TftpWrqPacket(std::string filename, std::string size) {
         add_word(opcode_wrq);
 
         offset_filename_ = data_.size();
@@ -143,6 +151,33 @@ public:
 
     std::string get_size() {
         return std::string((char *)(&data_[offset_size_]));
+    }
+};
+
+class TftpDataPacket : public Packet {
+private:
+    uint16_t block_;
+    unsigned int offset_file_data_;
+
+public:
+    TftpDataPacket(uint16_t block, std::vector<uint8_t> file_data) {
+        add_word(opcode_data);
+
+        block_ = block;
+        add_word(block);
+
+        offset_file_data_ = data_.size();
+        for (int i = 0; i< file_data.size(); i++) {
+            add_byte(file_data[i]);
+        }
+    }
+
+    uint16_t get_block() {
+        return get_word(2);
+    }
+
+    unsigned int get_file_data_offset() {
+        return 4;
     }
 };
 

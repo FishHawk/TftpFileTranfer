@@ -19,14 +19,10 @@ public:
         : socket_data_(io_context, udp::endpoint(udp::v6(), port)) {
         std::cout << "bind to port " << port << std::endl;
 
-        tftp::TftpWriteRequestPacket p("file", "size");
+        tftp::TftpDataPacket p(12, std::vector<uint8_t>{1,2,3,4});
         p.dump();
-        std::cout<<p.get_filename()<<std::endl;
-        std::cout<<p.get_mode()<<std::endl;
-        
-        std::cout<<p.get_data().size()<<std::endl;
-        tftp::Packet pp(p.get_data());
-        pp.dump();
+        std::cout<<p.get_block()<<std::endl;
+        std::cout<<p.get_file_data_offset()<<std::endl;
     }
 
 private:
