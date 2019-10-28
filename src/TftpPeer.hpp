@@ -19,10 +19,10 @@ public:
         : socket_data_(io_context, udp::endpoint(udp::v6(), port)) {
         std::cout << "bind to port " << port << std::endl;
 
-        tftp::TftpDataPacket p(12, std::vector<uint8_t>{1,2,3,4});
+        tftp::TftpErrorPacket p(12, "sss");
         p.dump();
-        std::cout<<p.get_block()<<std::endl;
-        std::cout<<p.get_file_data_offset()<<std::endl;
+        std::cout<<p.get_error_code()<<std::endl;
+        std::cout<<p.get_error_msg()<<std::endl;
     }
 
 private:
