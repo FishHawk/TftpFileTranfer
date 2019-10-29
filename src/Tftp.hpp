@@ -54,6 +54,20 @@ Buffer &operator+<uint8_t>(Buffer &buf, uint8_t val) {
     return buf;
 };
 
+template <>
+Buffer &operator+<uint16_t>(Buffer &buf, uint16_t val) {
+    buf.data.push_back(*(((uint8_t *)&val) + 1));
+    buf.data.push_back(*((uint8_t *)&val));
+    return buf;
+};
+
+template <>
+Buffer &operator+<std::string>(Buffer &buf, std::string val) {
+    std::copy(val.begin(), val.end(), std::back_inserter(buf.data));
+    buf.data.push_back(0);
+    return buf;
+};
+
 // class Packet {
 // protected:
 //     std::vector<uint8_t> data_;

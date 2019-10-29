@@ -21,8 +21,10 @@ public:
 
         tftp::Buffer b;
         b.dump();
-        uint8_t a =1;
-        b + a;
+        uint8_t a = 1;
+        uint16_t aa = 1;
+        std::string s = "qqq";
+        b + a + aa + s;
         b.dump();
     }
 
