@@ -19,20 +19,11 @@ public:
         : socket_data_(io_context, udp::endpoint(udp::v6(), port)) {
         std::cout << "bind to port " << port << std::endl;
 
-        // tftp::TftpWrqPacket p("2213123", "ddd");
-        // p.dump();
-
-        // tftp::Packet pp(p.get_data());
-        // pp.dump();
-
-        // auto ppp = tftp::parsing_wrq(pp);
-        // if (ppp) {
-        //     ppp->dump();
-        //     std::cout << ppp->get_filename() << std::endl;
-        //     std::cout << ppp->get_mode() << std::endl;
-        //     std::cout << ppp->get_size() << std::endl;
-        // } else
-        //     std::cout << "wrong" << std::endl;
+        tftp::Buffer b;
+        b.dump();
+        uint8_t a =1;
+        b + a;
+        b.dump();
     }
 
 private:

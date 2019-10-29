@@ -16,6 +16,44 @@ static const std::string default_mode = "octet";
 } // namespace tftp
 
 namespace tftp {
+
+class Buffer {
+public:
+    std::vector<uint8_t> data;
+
+    void dump() const {
+        std::cout << "size: " << data.size() << std::endl;
+
+        std::cout << "data: ";
+        for (auto &c : data) {
+            if (isprint(c))
+                std::cout << c;
+            else
+                std::cout << '.';
+        }
+        std::cout << std::endl;
+
+        std::cout << std::hex;
+        std::cout << "hex: ";
+        for (auto &c : data) {
+            std::cout << (int)c << ' ';
+        }
+        std::cout << std::endl;
+        std::cout << std::dec;
+    };
+};
+
+template <typename T>
+Buffer &operator+(Buffer &buf, T val) {
+    static_assert(sizeof(T) == -1, "unsupported data type");
+};
+
+template <>
+Buffer &operator+<uint8_t>(Buffer &buf, uint8_t val) {
+    buf.data.push_back(val);
+    return buf;
+};
+
 // class Packet {
 // protected:
 //     std::vector<uint8_t> data_;
@@ -63,27 +101,6 @@ namespace tftp {
 
 //     std::vector<uint8_t> &get_data() {
 //         return data_;
-//     }
-
-//     void dump() {
-//         std::cout << "size: " << data_.size() << std::endl;
-
-//         std::cout << "data: ";
-//         for (auto &c : data_) {
-//             if (isprint(c))
-//                 std::cout << c;
-//             else
-//                 std::cout << '.';
-//         }
-//         std::cout << std::endl;
-
-//         std::cout << std::hex;
-//         std::cout << "hex: ";
-//         for (auto &c : data_) {
-//             std::cout << (int)c << ' ';
-//         }
-//         std::cout << std::endl;
-//         std::cout << std::dec;
 //     }
 // };
 
