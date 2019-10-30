@@ -158,6 +158,20 @@ public:
 
         return ack;
     }
+    
+    PacketError parser_error() {
+        if (!is_error())
+            throw std::invalid_argument("invalid packet format");
+
+        PacketError error;
+        if (!((*this) >> error.error_code_))
+            throw std::invalid_argument("invalid packet format");
+
+        if (!((*this) >> error.error_msg_))
+            throw std::invalid_argument("invalid packet format");
+
+        return error;
+    }
 };
 
 }  // namespace tftp
