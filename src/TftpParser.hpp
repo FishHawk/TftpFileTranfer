@@ -135,8 +135,19 @@ public:
         return wrq;
     }
 
+    PacketData parser_data() {
+        if (!is_data())
+            throw std::invalid_argument("invalid packet format");
 
-};  // namespace tftp
+        PacketData data;
+        if (!((*this) >> data.block_))
+            throw std::invalid_argument("invalid packet format");
+
+        data.data_length_ = raw_packet_.size() - offset_;
+
+        return data;
+    }
+};
 
 }  // namespace tftp
 

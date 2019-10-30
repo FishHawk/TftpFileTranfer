@@ -147,14 +147,14 @@ private:
     friend class Parser;
 
     uint16_t block_;
-    std::vector<uint8_t> data_;
+    unsigned int data_length_ = 0;
 
     PacketData() = default;
 
 public:
-    PacketData(uint16_t block, std::vector<uint8_t> data)
-        : block_(block), data_(std::move(data)) {
-        (*this) + opcode_data + block_ + data_;
+    PacketData(uint16_t block)
+        : block_(block) {
+        (*this) + opcode_data + block_;
     }
 };
 
