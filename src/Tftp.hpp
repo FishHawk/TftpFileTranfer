@@ -73,6 +73,12 @@ Buffer &operator+<std::string>(Buffer &buf, std::string val) {
 };
 
 template <>
+Buffer &operator+<std::vector<uint8_t>>(Buffer &buf, std::vector<uint8_t> val) {
+    std::copy(val.begin(), val.end(), std::back_inserter(buf.data));
+    return buf;
+};
+
+template <>
 Buffer &operator+<Mode>(Buffer &buf, Mode val) {
     switch (val) {
     case Mode::netascii:
@@ -102,7 +108,6 @@ public:
 
     void serialize(Buffer &buf) {
         buf + opcode_rrq + filename_ + mode_;
-
         for (auto const &[key, val] : options_) {
             buf + key + val;
         }
@@ -123,13 +128,24 @@ public:
 
     void serialize(Buffer &buf) {
         buf + opcode_wrq + filename_ + mode_;
-
         for (auto const &[key, val] : options_) {
             buf + key + val;
         }
     }
 };
 
+class PacketData {
+private:
+    uint16_t block_;
+    std::vector<uint8_t> data_;
+
+public:
+    PacketData(uint16_t block, std::vector<uint8_t> data) : block_(block), data_(std::move(data)) {}
+
+    void serialize(Buffer &buf) {
+        buf + opcode_wrq + block_ + data_;
+    }
+};
 // class Packet {
 // protected:
 //     std::vector<uint8_t> data_;
@@ -177,74 +193,6 @@ public:
 
 //     std::vector<uint8_t> &get_data() {
 //         return data_;
-//     }
-// };
-
-// class TftpWrqPacket : public Packet {
-//     friend TftpWrqPacket *parsing_wrq(Packet &packet);
-
-// private:
-//     unsigned int offset_filename_;
-//     unsigned int offset_mode_;
-//     unsigned int offset_size_;
-
-//     TftpWrqPacket(Packet &p) : Packet(p) {}
-
-// public:
-//     TftpWrqPacket(std::string filename, std::string size) {
-//         add_word(opcode_wrq);
-
-//         offset_filename_ = data_.size();
-//         add_string(filename);
-//         add_byte(0);
-
-//         offset_mode_ = data_.size();
-//         add_string(default_mode);
-//         add_byte(0);
-
-//         add_string("tsize");
-//         add_byte(0);
-
-//         offset_size_ = data_.size();
-//         add_string(size);
-//         add_byte(0);
-//     }
-
-//     std::string get_filename() {
-//         return std::string((char *)(&data_[offset_filename_]));
-//     }
-
-//     std::string get_mode() {
-//         return std::string((char *)(&data_[offset_mode_]));
-//     }
-
-//     std::string get_size() {
-//         return std::string((char *)(&data_[offset_size_]));
-//     }
-// };
-
-// class TftpDataPacket : public Packet {
-// private:
-//     uint16_t block_;
-
-// public:
-//     TftpDataPacket(uint16_t block, std::vector<uint8_t> file_data) {
-//         add_word(opcode_data);
-
-//         block_ = block;
-//         add_word(block);
-
-//         for (int i = 0; i < file_data.size(); i++) {
-//             add_byte(file_data[i]);
-//         }
-//     }
-
-//     uint16_t get_block() {
-//         return get_word(2);
-//     }
-
-//     unsigned int get_file_data_offset() {
-//         return 4;
 //     }
 // };
 
