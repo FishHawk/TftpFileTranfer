@@ -21,7 +21,7 @@ static const Mode default_mode = Mode::octet;
 
 namespace tftp {
 
-class Buffer {
+class Packet {
 public:
     std::vector<uint8_t> data;
 
@@ -48,38 +48,38 @@ public:
 };
 
 template <typename T>
-Buffer &operator+(Buffer &buf, T val) {
+Packet &operator+(Packet &buf, T val) {
     static_assert(sizeof(T) == -1, "unsupported data type");
 };
 
 template <>
-Buffer &operator+<uint8_t>(Buffer &buf, uint8_t val) {
+Packet &operator+<uint8_t>(Packet &buf, uint8_t val) {
     buf.data.push_back(val);
     return buf;
 };
 
 template <>
-Buffer &operator+<uint16_t>(Buffer &buf, uint16_t val) {
+Packet &operator+<uint16_t>(Packet &buf, uint16_t val) {
     buf.data.push_back(*(((uint8_t *)&val) + 1));
     buf.data.push_back(*((uint8_t *)&val));
     return buf;
 };
 
 template <>
-Buffer &operator+<std::string>(Buffer &buf, std::string val) {
+Packet &operator+<std::string>(Packet &buf, std::string val) {
     std::copy(val.begin(), val.end(), std::back_inserter(buf.data));
     buf.data.push_back(0);
     return buf;
 };
 
 template <>
-Buffer &operator+<std::vector<uint8_t>>(Buffer &buf, std::vector<uint8_t> val) {
+Packet &operator+<std::vector<uint8_t>>(Packet &buf, std::vector<uint8_t> val) {
     std::copy(val.begin(), val.end(), std::back_inserter(buf.data));
     return buf;
 };
 
 template <>
-Buffer &operator+<Mode>(Buffer &buf, Mode val) {
+Packet &operator+<Mode>(Packet &buf, Mode val) {
     switch (val) {
     case Mode::netascii:
         buf + std::string("netascii");
@@ -94,7 +94,7 @@ Buffer &operator+<Mode>(Buffer &buf, Mode val) {
     return buf;
 };
 
-class PacketRrq {
+class PacketRrq : public Packet {
     using Options = std::map<std::string, std::string>;
 
 private:
@@ -104,17 +104,15 @@ private:
 
 public:
     PacketRrq(std::string filename, Mode mode = default_mode, Options options = {})
-        : filename_(filename), mode_(mode), options_(options) {}
-
-    void serialize(Buffer &buf) {
-        buf + opcode_rrq + filename_ + mode_;
+        : filename_(filename), mode_(mode), options_(options) {
+        (*this) + opcode_rrq + filename_ + mode_;
         for (auto const &[key, val] : options_) {
-            buf + key + val;
+            (*this) + key + val;
         }
     }
 };
 
-class PacketWrq {
+class PacketWrq : public Packet {
     using Options = std::map<std::string, std::string>;
 
 private:
@@ -124,38 +122,34 @@ private:
 
 public:
     PacketWrq(std::string filename, Mode mode = default_mode, Options options = {})
-        : filename_(filename), mode_(mode), options_(options) {}
-
-    void serialize(Buffer &buf) {
-        buf + opcode_wrq + filename_ + mode_;
+        : filename_(filename), mode_(mode), options_(options) {
+        (*this) + opcode_wrq + filename_ + mode_;
         for (auto const &[key, val] : options_) {
-            buf + key + val;
+            (*this) + key + val;
         }
     }
 };
 
-class PacketData {
+class PacketData : public Packet {
 private:
     uint16_t block_;
     std::vector<uint8_t> data_;
 
 public:
-    PacketData(uint16_t block, std::vector<uint8_t> data) : block_(block), data_(std::move(data)) {}
-
-    void serialize(Buffer &buf) {
-        buf + opcode_data + block_ + data_;
+    PacketData(uint16_t block, std::vector<uint8_t> data)
+        : block_(block), data_(std::move(data)) {
+        (*this) + opcode_data + block_ + data_;
     }
 };
 
-class PacketAck {
+class PacketAck : public Packet {
 private:
     uint16_t block_;
 
 public:
-    PacketAck(uint16_t block) : block_(block) {}
-
-    void serialize(Buffer &buf) {
-        buf + opcode_ack + block_;
+    PacketAck(uint16_t block)
+        : block_(block) {
+        (*this) + opcode_data + block_;
     }
 };
 
@@ -171,16 +165,15 @@ Error Codes
    6         File already exists.
    7         No such user.
 */
-class PacketError {
+class PacketError : public Packet {
 private:
     uint16_t error_code_;
     std::string error_msg_;
 
 public:
-    PacketError(uint16_t error_code, std::string error_msg) : error_code_(error_code), error_msg_(error_msg) {}
-
-    void serialize(Buffer &buf) {
-        buf + opcode_error + error_code_ + error_msg_;
+    PacketError(uint16_t error_code, std::string error_msg)
+        : error_code_(error_code), error_msg_(error_msg) {
+        (*this) + opcode_error + error_code_ + error_msg_;
     }
 };
 

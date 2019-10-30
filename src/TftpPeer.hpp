@@ -19,10 +19,8 @@ public:
         : socket_data_(io_context, udp::endpoint(udp::v6(), port)) {
         std::cout << "bind to port " << port << std::endl;
 
-        tftp::Buffer b;
-        tftp::PacketData d(1, {1, 2, 3});
-        d.serialize(b);
-        b.dump();
+        tftp::PacketRrq d("dddd");
+        d.dump();
     }
 
 private:
