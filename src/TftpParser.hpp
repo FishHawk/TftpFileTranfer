@@ -147,6 +147,17 @@ public:
 
         return data;
     }
+
+    PacketAck parser_ack() {
+        if (!is_ack())
+            throw std::invalid_argument("invalid packet format");
+
+        PacketAck ack;
+        if (!((*this) >> ack.block_))
+            throw std::invalid_argument("invalid packet format");
+
+        return ack;
+    }
 };
 
 }  // namespace tftp
