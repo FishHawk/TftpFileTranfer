@@ -20,12 +20,10 @@ public:
         std::cout << "bind to port " << port << std::endl;
 
         tftp::Buffer b;
+        tftp::PacketRrq rrq("sfasdf", tftp::default_mode, {{"tseize", "val"}});
+        rrq.serialize(b);
         b.dump();
-        uint8_t a = 1;
-        uint16_t aa = 1;
-        std::string s = "qqq";
-        b + a + aa + s;
-        b.dump();
+       
     }
 
 private:

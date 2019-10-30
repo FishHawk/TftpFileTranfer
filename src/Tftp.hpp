@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <map>
 #include <vector>
 
 namespace tftp {
@@ -12,7 +13,10 @@ static const uint16_t opcode_data = 3;
 static const uint16_t opcode_ack = 4;
 static const uint16_t opcode_error = 5;
 
-static const std::string default_mode = "octet";
+enum class Mode { netascii,
+                  octet,
+                  mail };
+static const Mode default_mode = Mode::octet;
 } // namespace tftp
 
 namespace tftp {
@@ -68,6 +72,39 @@ Buffer &operator+<std::string>(Buffer &buf, std::string val) {
     return buf;
 };
 
+class PacketRrq {
+    using Options = std::map<std::string, std::string>;
+
+private:
+    std::string filename_;
+    Mode mode_;
+    Options options_;
+
+public:
+    PacketRrq(std::string filename, Mode mode = default_mode, Options options = {})
+        : filename_(filename), mode_(mode), options_(options) {}
+
+    void serialize(Buffer &buf) {
+        buf + opcode_rrq + filename_;
+
+        switch (mode_) {
+        case Mode::netascii:
+            buf + std::string("netascii");
+            break;
+        case Mode::octet:
+            buf + std::string("octet");
+            break;
+        case Mode::mail:
+            buf + std::string("mail");
+            break;
+        }
+
+        for (auto const &[key, val] : options_) {
+            buf + key + val;
+        }
+    }
+};
+
 // class Packet {
 // protected:
 //     std::vector<uint8_t> data_;
@@ -115,37 +152,6 @@ Buffer &operator+<std::string>(Buffer &buf, std::string val) {
 
 //     std::vector<uint8_t> &get_data() {
 //         return data_;
-//     }
-// };
-
-// class TftpRrqPacket : public Packet {
-//     friend TftpRrqPacket *parsing_rrq(Packet &packet);
-
-// private:
-//     unsigned int offset_filename_;
-//     unsigned int offset_mode_;
-
-//     TftpRrqPacket(Packet &p) : Packet(p) {}
-
-// public:
-//     TftpRrqPacket(std::string filename) {
-//         add_word(opcode_rrq);
-
-//         offset_filename_ = data_.size();
-//         add_string(filename);
-//         add_byte(0);
-
-//         offset_mode_ = data_.size();
-//         add_string(default_mode);
-//         add_byte(0);
-//     }
-
-//     std::string get_filename() {
-//         return std::string((char *)(&data_[offset_filename_]));
-//     }
-
-//     std::string get_mode() {
-//         return std::string((char *)(&data_[offset_mode_]));
 //     }
 // };
 
