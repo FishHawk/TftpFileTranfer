@@ -21,6 +21,13 @@ public:
 
         tftp::PacketRrq d("dddd");
         d.dump();
+        tftp::Parser pa(d.data);
+        try {
+            auto n_rrq = pa.parser_rrq();
+            n_rrq.dump();
+        } catch (std::invalid_argument &e) {
+            std::cout << "error" << std::endl;
+        }
     }
 
 private:

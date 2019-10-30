@@ -96,11 +96,14 @@ Packet &operator+<Mode>(Packet &buf, Mode val) {
 
 class PacketRrq : public Packet {
     using Options = std::map<std::string, std::string>;
+    friend class Parser;
 
 private:
     std::string filename_;
     Mode mode_;
     Options options_;
+
+    PacketRrq() = default;
 
 public:
     PacketRrq(std::string filename, Mode mode = default_mode, Options options = {})
