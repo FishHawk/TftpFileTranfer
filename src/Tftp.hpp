@@ -159,40 +159,30 @@ public:
     }
 };
 
-// /*
-// Error Codes
-//    Value     Meaning
-//    0         Not defined, see error message (if any).
-//    1         File not found.
-//    2         Access violation.
-//    3         Disk full or allocation exceeded.
-//    4         Illegal TFTP operation.
-//    5         Unknown transfer ID.
-//    6         File already exists.
-//    7         No such user.
-// */
-// class TftpErrorPacket : public Packet {
-// private:
-//     uint16_t error_code_;
+/*
+Error Codes
+   Value     Meaning
+   0         Not defined, see error message (if any).
+   1         File not found.
+   2         Access violation.
+   3         Disk full or allocation exceeded.
+   4         Illegal TFTP operation.
+   5         Unknown transfer ID.
+   6         File already exists.
+   7         No such user.
+*/
+class PacketError {
+private:
+    uint16_t error_code_;
+    std::string error_msg_;
 
-// public:
-//     TftpErrorPacket(uint16_t error_code, std::string error_msg) {
-//         add_word(opcode_data);
+public:
+    PacketError(uint16_t error_code, std::string error_msg) : error_code_(error_code), error_msg_(error_msg) {}
 
-//         error_code_ = error_code;
-//         add_word(error_code);
+    void serialize(Buffer &buf) {
+        buf + opcode_error + error_code_ + error_msg_;
+    }
+};
 
-//         add_string(error_msg);
-//         add_byte(0);
-//     }
-
-//     uint16_t get_error_code() {
-//         return get_word(2);
-//     }
-
-//     std::string get_error_msg() {
-//         return std::string((char *)(&data_[4]));
-//     }
-// };
 } // namespace tftp
 #endif
