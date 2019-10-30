@@ -143,75 +143,21 @@ public:
     PacketData(uint16_t block, std::vector<uint8_t> data) : block_(block), data_(std::move(data)) {}
 
     void serialize(Buffer &buf) {
-        buf + opcode_wrq + block_ + data_;
+        buf + opcode_data + block_ + data_;
     }
 };
-// class Packet {
-// protected:
-//     std::vector<uint8_t> data_;
 
-// public:
-//     Packet() {}
+class PacketAck {
+private:
+    uint16_t block_;
 
-//     Packet(std::vector<uint8_t> &data) : data_(std::move(data)) {}
+public:
+    PacketAck(uint16_t block) : block_(block) {}
 
-//     void add_byte(uint8_t b) {
-//         data_.push_back(b);
-//     }
-
-//     uint8_t get_byte(unsigned int offset) {
-//         return data_[offset];
-//     }
-
-//     void add_word(uint16_t w) {
-//         add_byte(*(((uint8_t *)&w) + 1));
-//         add_byte(*((uint8_t *)&w));
-//     }
-
-//     uint16_t get_word(unsigned int offset) {
-//         return (((uint16_t)data_[offset]) << 8) + data_[offset + 1];
-//     }
-
-//     void add_string(std::string s) {
-//         for (auto &c : s) {
-//             add_byte(c);
-//         }
-//     }
-
-//     int is_legal_string(unsigned int offset) {
-//         if (offset >= data_.size())
-//             return -1;
-
-//         int i = offset;
-//         while (data_[i] != 0 && i < data_.size())
-//             i++;
-//         if (i == data_.size())
-//             return -1;
-
-//         return i - offset;
-//     }
-
-//     std::vector<uint8_t> &get_data() {
-//         return data_;
-//     }
-// };
-
-// class TftpAckPacket : public Packet {
-// private:
-//     uint16_t block_;
-
-// public:
-//     TftpAckPacket(uint16_t block) {
-//         add_word(opcode_data);
-
-//         block_ = block;
-//         add_word(block);
-//     }
-
-//     uint16_t get_block() {
-//         return get_word(2);
-//     }
-// };
+    void serialize(Buffer &buf) {
+        buf + opcode_ack + block_;
+    }
+};
 
 // /*
 // Error Codes
