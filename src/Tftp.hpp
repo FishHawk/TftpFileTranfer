@@ -17,7 +17,7 @@ enum class Mode { netascii,
                   octet,
                   mail };
 static const Mode default_mode = Mode::octet;
-} // namespace tftp
+}  // namespace tftp
 
 namespace tftp {
 
@@ -95,10 +95,12 @@ Packet &operator+<Mode>(Packet &buf, Mode val) {
 };
 
 class PacketRrq : public Packet {
+public:
     using Options = std::map<std::string, std::string>;
-    friend class Parser;
 
 private:
+    friend class Parser;
+
     std::string filename_;
     Mode mode_;
     Options options_;
@@ -116,12 +118,17 @@ public:
 };
 
 class PacketWrq : public Packet {
+    friend class Parser;
+
+public:
     using Options = std::map<std::string, std::string>;
 
 private:
     std::string filename_;
     Mode mode_;
     Options options_;
+
+    PacketWrq() = default;
 
 public:
     PacketWrq(std::string filename, Mode mode = default_mode, Options options = {})
@@ -134,9 +141,15 @@ public:
 };
 
 class PacketData : public Packet {
+    friend class Parser;
+
 private:
+    friend class Parser;
+
     uint16_t block_;
     std::vector<uint8_t> data_;
+
+    PacketData() = default;
 
 public:
     PacketData(uint16_t block, std::vector<uint8_t> data)
@@ -146,8 +159,12 @@ public:
 };
 
 class PacketAck : public Packet {
+    friend class Parser;
+
 private:
     uint16_t block_;
+
+    PacketAck() = default;
 
 public:
     PacketAck(uint16_t block)
@@ -169,9 +186,13 @@ Error Codes
    7         No such user.
 */
 class PacketError : public Packet {
+    friend class Parser;
+
 private:
     uint16_t error_code_;
     std::string error_msg_;
+
+    PacketError() = default;
 
 public:
     PacketError(uint16_t error_code, std::string error_msg)
@@ -180,5 +201,5 @@ public:
     }
 };
 
-} // namespace tftp
+}  // namespace tftp
 #endif

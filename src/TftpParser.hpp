@@ -92,8 +92,10 @@ public:
     bool is_error() { return opcode_ == opcode_error; }
 
     PacketRrq parser_rrq() {
+        if (!is_rrq())
+            throw std::invalid_argument("invalid packet format");
+
         PacketRrq rrq;
-        // rrq = new PacketRrq();
         if (!((*this) >> rrq.filename_))
             throw std::invalid_argument("invalid packet format");
 
@@ -110,8 +112,32 @@ public:
         rrq.data = std::move(raw_packet_);
         return rrq;
     }
-}; // namespace tftp
 
-} // namespace tftp
+    PacketWrq parser_wrq() {
+        if (!is_wrq())
+            throw std::invalid_argument("invalid packet format");
+
+        PacketWrq wrq;
+        if (!((*this) >> wrq.filename_))
+            throw std::invalid_argument("invalid packet format");
+
+        if (!((*this) >> wrq.mode_))
+            throw std::invalid_argument("invalid packet format");
+
+        while (offset_ < raw_packet_.size()) {
+            std::string key, val;
+            if ((*this) >> key >> val)
+                throw std::invalid_argument("invalid packet format");
+            wrq.options_[key] = val;
+        }
+
+        wrq.data = std::move(raw_packet_);
+        return wrq;
+    }
+
+
+};  // namespace tftp
+
+}  // namespace tftp
 
 #endif
