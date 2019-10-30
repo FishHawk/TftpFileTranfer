@@ -72,6 +72,22 @@ Buffer &operator+<std::string>(Buffer &buf, std::string val) {
     return buf;
 };
 
+template <>
+Buffer &operator+<Mode>(Buffer &buf, Mode val) {
+    switch (val) {
+    case Mode::netascii:
+        buf + std::string("netascii");
+        break;
+    case Mode::octet:
+        buf + std::string("octet");
+        break;
+    case Mode::mail:
+        buf + std::string("mail");
+        break;
+    }
+    return buf;
+};
+
 class PacketRrq {
     using Options = std::map<std::string, std::string>;
 
@@ -85,19 +101,28 @@ public:
         : filename_(filename), mode_(mode), options_(options) {}
 
     void serialize(Buffer &buf) {
-        buf + opcode_rrq + filename_;
+        buf + opcode_rrq + filename_ + mode_;
 
-        switch (mode_) {
-        case Mode::netascii:
-            buf + std::string("netascii");
-            break;
-        case Mode::octet:
-            buf + std::string("octet");
-            break;
-        case Mode::mail:
-            buf + std::string("mail");
-            break;
+        for (auto const &[key, val] : options_) {
+            buf + key + val;
         }
+    }
+};
+
+class PacketWrq {
+    using Options = std::map<std::string, std::string>;
+
+private:
+    std::string filename_;
+    Mode mode_;
+    Options options_;
+
+public:
+    PacketWrq(std::string filename, Mode mode = default_mode, Options options = {})
+        : filename_(filename), mode_(mode), options_(options) {}
+
+    void serialize(Buffer &buf) {
+        buf + opcode_wrq + filename_ + mode_;
 
         for (auto const &[key, val] : options_) {
             buf + key + val;
