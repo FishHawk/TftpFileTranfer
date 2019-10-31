@@ -1,12 +1,12 @@
-#include <iostream>
-
 #include <boost/asio.hpp>
+#include <iostream>
 
 #include "TftpPeer.hpp"
 
 int main(int argc, char *argv[]) {
-    int port = TftpPeer::default_port;
-    if (argc > 1) port = std::stoi(argv[1]);
+    unsigned short port = TftpPeer::default_port;
+    if (argc > 1)
+        port = std::stoi(argv[1]);
 
     try {
         boost::asio::io_context io_context;

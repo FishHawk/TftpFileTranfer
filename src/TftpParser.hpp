@@ -158,7 +158,7 @@ public:
 
         return ack;
     }
-    
+
     PacketError parser_error() {
         if (!is_error())
             throw std::invalid_argument("invalid packet format");
