@@ -18,29 +18,19 @@ public:
 
     TftpPeer(boost::asio::io_context &io_context, unsigned short port)
         : socket_data_(io_context, udp::endpoint(udp::v6(), port)) {
+        recv_buffer_.resize(512);
         std::cout << "bind to port " << port << std::endl;
 
+        start_receive();
         // for test
         if (port == 10000)
             start_transaction("test.jpg", "::1", 10001);
-        else
-            start_receive();
-
-        // tftp::PacketRrq d("dddd");
-        // d.dump();
-        // tftp::Parser pa(d.data);
-        // try {
-        //     auto n_rrq = pa.parser_rrq();
-        //     n_rrq.dump();
-        // } catch (std::invalid_argument &e) {
-        //     std::cout << "error" << std::endl;
-        // }
     }
 
 private:
     udp::socket socket_data_;
-    // udp::endpoint remote_endpoint_;
-    // boost::array<char, 1> recv_buffer_;
+    udp::endpoint remote_endpoint_;
+    std::vector<uint8_t> recv_buffer_;
 
     void start_transaction(std::string filename, std::string dst_ip, unsigned short dst_port) {
         std::cout << "send write request" << std::endl;
@@ -57,26 +47,39 @@ private:
         std::cout << "dst:" << receiver_endpoint << std::endl;
 
         socket_data_.send_to(boost::asio::buffer(wrq.data), receiver_endpoint);
-        socket_data_.send_to(boost::asio::buffer("123456"), receiver_endpoint);
-
-        // boost::array<char, 128> recv_buf;
-        // udp::endpoint sender_endpoint;
-        // size_t len = socket.receive_from(
-        //     boost::asio::buffer(recv_buf), sender_endpoint);
-
-        // std::cout.write(recv_buf.data(), len);
     }
 
     void start_receive() {
-        std::vector<uint8_t> raw_packet;
-        raw_packet.resize(1024);
+        socket_data_.async_receive_from(
+            boost::asio::buffer(recv_buffer_.data(), 512), remote_endpoint_,
+            [this](boost::system::error_code e, std::size_t bytes_recvd) {
+                std::cout << bytes_recvd << std::endl;
+                if (!e && bytes_recvd > 0) {
+                    std::vector<uint8_t> packet(recv_buffer_.begin(), recv_buffer_.begin() + bytes_recvd);
+                    tftp::Parser parser(packet);
+                    std::cout << parser.is_wrq() << std::endl;
 
-        udp::endpoint sender_endpoint;
-        size_t len = socket_data_.receive_from(boost::asio::buffer(raw_packet), sender_endpoint);
-        
-        // tftp::Parser parser(raw_packet);
+                    try {
+                        if (parser.is_wrq()) {
+                            auto wrq = parser.parser_wrq();
+                            wrq_handle(wrq, remote_endpoint_);
+                        } else if (parser.is_rrq())
+                            ;
+                        else if (parser.is_data())
+                            ;
+                        else if (parser.is_ack())
+                            ;
+                        else if (parser.is_error())
+                            ;
+                    } catch (std::invalid_argument &e) {
+                        std::cout << "wrong format" << std::endl;
+                    }
+                }
+            });
+    }
 
-        std::cout.write((char *)raw_packet.data(), len);
+    void wrq_handle(tftp::PacketWrq &wrq, udp::endpoint endpoint) {
+        wrq.dump();
     }
 };
 

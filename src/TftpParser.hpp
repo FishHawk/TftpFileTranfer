@@ -104,7 +104,7 @@ public:
 
         while (offset_ < raw_packet_.size()) {
             std::string key, val;
-            if ((*this) >> key >> val)
+            if (!((*this) >> key >> val))
                 throw std::invalid_argument("invalid packet format");
             rrq.options_[key] = val;
         }
@@ -126,7 +126,7 @@ public:
 
         while (offset_ < raw_packet_.size()) {
             std::string key, val;
-            if ((*this) >> key >> val)
+            if (!((*this) >> key >> val))
                 throw std::invalid_argument("invalid packet format");
             wrq.options_[key] = val;
         }
@@ -174,6 +174,6 @@ public:
     }
 };
 
-}  // namespace tftp
+} // namespace tftp
 
 #endif
