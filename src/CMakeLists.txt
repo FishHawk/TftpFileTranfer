@@ -6,6 +6,7 @@ find_package(Boost 1.71.0 REQUIRED COMPONENTS system )
 
 add_executable(tftp
     TftpPeer.hpp
+    TftpTranscation.hpp
     TftpParser.hpp
     Tftp.hpp
     main.cpp)

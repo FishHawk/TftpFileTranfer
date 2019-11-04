@@ -17,6 +17,12 @@ enum class Mode { netascii,
                   octet,
                   mail };
 static const Mode default_mode = Mode::octet;
+
+static const std::map<Mode, const char *> mode_to_string = {
+    {Mode::netascii, "netascii"},
+    {Mode::octet, "octet"},
+    {Mode::mail, "mail"},
+};
 } // namespace tftp
 
 namespace tftp {
@@ -26,11 +32,8 @@ private:
     friend class Parser;
 
 public:
+    // TODO: raw_ type need change
     std::vector<uint8_t> raw_;
-
-    uint8_t *data() {
-        return raw_.data();
-    }
 
     void dump() const {
         std::cout << "size: " << raw_.size() << std::endl;
@@ -95,11 +98,15 @@ class ReadRequest {
 public:
     using Options = std::map<std::string, std::string>;
 
-    static Packet *serialize(const std::string &filename, const Mode mode = default_mode, const Options = {}) {
-        Packet *packet = new Packet;
-        *packet << opcode_rrq << filename << mode;
+    static Packet serialize(const std::string &filename, const Mode mode = default_mode, const Options = {}) {
+        Packet packet;
+        packet << opcode_rrq << filename << mode;
         return packet;
     }
+
+    const std::string &filename() { return filename_; }
+    const Mode &mode() { return mode_; }
+    const Options &options() { return options_; }
 
 private:
     friend class Parser;
@@ -113,15 +120,15 @@ class WriteRequest {
 public:
     using Options = std::map<std::string, std::string>;
 
-    static Packet *serialize(const std::string &filename, const Mode mode = default_mode, const Options = {}) {
-        Packet *packet = new Packet;
-        *packet << opcode_wrq << filename << mode;
+    static Packet serialize(const std::string &filename, const Mode mode = default_mode, const Options = {}) {
+        Packet packet;
+        packet << opcode_wrq << filename << mode;
         return packet;
     }
 
-    const std::string &filename() {
-        return filename_;
-    }
+    const std::string &filename() { return filename_; }
+    const Mode &mode() { return mode_; }
+    const Options &options() { return options_; }
 
 private:
     friend class Parser;
@@ -131,66 +138,69 @@ private:
     Options options_;
 };
 
-// class PacketData : public Packet {
-//     friend class Parser;
+class Data {
+public:
+    static Packet serialize(const uint16_t block, std::vector<uint8_t> data) {
+        Packet packet;
+        packet << opcode_data << block << data;
+        return packet;
+    }
 
-// private:
-//     friend class Parser;
+    const uint16_t block() { return block_; }
+    const std::vector<uint8_t> &data() { return data_; }
 
-//     uint16_t block_;
-//     unsigned int data_length_ = 0;
+private:
+    friend class Parser;
 
-//     PacketData() = default;
+    uint16_t block_;
+    std::vector<uint8_t> data_;
+};
 
-// public:
-//     PacketData(uint16_t block)
-//         : block_(block) {
-//         (*this) + opcode_data + block_;
-//     }
-// };
+class Ack {
+public:
+    static Packet serialize(const uint16_t block) {
+        Packet packet;
+        packet << opcode_ack << block;
+        return packet;
+    }
 
-// class PacketAck : public Packet {
-//     friend class Parser;
+    const uint16_t block() { return block_; }
 
-// private:
-//     uint16_t block_;
+private:
+    friend class Parser;
 
-//     PacketAck() = default;
+    uint16_t block_;
+};
 
-// public:
-//     PacketAck(uint16_t block)
-//         : block_(block) {
-//         (*this) + opcode_data + block_;
-//     }
-// };
+/*
+Error Codes
+   Value     Meaning
+   0         Not defined, see error message (if any).
+   1         File not found.
+   2         Access violation.
+   3         Disk full or allocation exceeded.
+   4         Illegal TFTP operation.
+   5         Unknown transfer ID.
+   6         File already exists.
+   7         No such user.
+*/
+class ErrorResponse {
+public:
+    static Packet serialize(const uint16_t error_code, const std::string &error_msg = "") {
+        Packet packet;
+        packet << opcode_error << error_code << error_msg;
+        return packet;
+    }
 
-// /*
-// Error Codes
-//    Value     Meaning
-//    0         Not defined, see error message (if any).
-//    1         File not found.
-//    2         Access violation.
-//    3         Disk full or allocation exceeded.
-//    4         Illegal TFTP operation.
-//    5         Unknown transfer ID.
-//    6         File already exists.
-//    7         No such user.
-// */
-// class PacketError : public Packet {
-//     friend class Parser;
+    const uint16_t error_code() { return error_code_; }
+    const std::string &error_msg() { return error_msg_; }
 
-// private:
-//     uint16_t error_code_;
-//     std::string error_msg_;
+private:
+    friend class Parser;
 
-//     PacketError() = default;
-
-// public:
-//     PacketError(uint16_t error_code, std::string error_msg)
-//         : error_code_(error_code), error_msg_(error_msg) {
-//         (*this) + opcode_error + error_code_ + error_msg_;
-//     }
-// };
+    uint16_t error_code_;
+    std::string error_msg_;
+};
 
 } // namespace tftp
 #endif

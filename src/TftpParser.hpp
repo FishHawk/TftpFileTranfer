@@ -11,7 +11,7 @@ namespace tftp {
 
 class Parser {
 private:
-    std::vector<uint8_t>& raw_packet_;
+    std::vector<uint8_t> &raw_packet_;
     bool is_valid_ = true;
     unsigned int offset_ = 0;
     uint16_t opcode_ = 0;
@@ -29,6 +29,18 @@ private:
         }
         val = ((uint16_t)raw_packet_[offset_] << 8) + raw_packet_[offset_ + 1];
         offset_ += 2;
+        return *this;
+    }
+
+    Parser &operator>>(std::vector<uint8_t> &val) {
+        if (is_valid_ == false)
+            return *this;
+        if (raw_packet_.size() < offset_) {
+            is_valid_ = false;
+            return *this;
+        }
+        std::copy(raw_packet_.begin() + offset_, val.end(), std::back_inserter(val));
+        offset_ = raw_packet_.size();
         return *this;
     }
 
@@ -80,7 +92,7 @@ private:
     }
 
 public:
-    Parser(std::vector<uint8_t>&raw_packet)
+    Parser(std::vector<uint8_t> &raw_packet)
         : raw_packet_(raw_packet) {
         (*this) >> opcode_;
     }
@@ -131,43 +143,44 @@ public:
         return wrq;
     }
 
-//     PacketData parser_data() {
-//         if (!is_data())
-//             throw std::invalid_argument("invalid packet format");
+    Data parser_data() {
+        if (!is_data())
+            throw std::invalid_argument("invalid packet format");
 
-//         PacketData data;
-//         if (!((*this) >> data.block_))
-//             throw std::invalid_argument("invalid packet format");
+        Data data;
+        if (!((*this) >> data.block_))
+            throw std::invalid_argument("invalid packet format");
 
-//         data.data_length_ = raw_packet_.size() - offset_;
+        if (!((*this) >> data.data_))
+            throw std::invalid_argument("invalid packet format");
 
-//         return data;
-//     }
+        return data;
+    }
 
-//     PacketAck parser_ack() {
-//         if (!is_ack())
-//             throw std::invalid_argument("invalid packet format");
+    Ack parser_ack() {
+        if (!is_ack())
+            throw std::invalid_argument("invalid packet format");
 
-//         PacketAck ack;
-//         if (!((*this) >> ack.block_))
-//             throw std::invalid_argument("invalid packet format");
+        Ack ack;
+        if (!((*this) >> ack.block_))
+            throw std::invalid_argument("invalid packet format");
 
-//         return ack;
-//     }
+        return ack;
+    }
 
-//     PacketError parser_error() {
-//         if (!is_error())
-//             throw std::invalid_argument("invalid packet format");
+    ErrorResponse parser_error() {
+        if (!is_error())
+            throw std::invalid_argument("invalid packet format");
 
-//         PacketError error;
-//         if (!((*this) >> error.error_code_))
-//             throw std::invalid_argument("invalid packet format");
+        ErrorResponse error;
+        if (!((*this) >> error.error_code_))
+            throw std::invalid_argument("invalid packet format");
 
-//         if (!((*this) >> error.error_msg_))
-//             throw std::invalid_argument("invalid packet format");
+        if (!((*this) >> error.error_msg_))
+            throw std::invalid_argument("invalid packet format");
 
-//         return error;
-//     }
+        return error;
+    }
 };
 
 } // namespace tftp
