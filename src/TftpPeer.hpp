@@ -1,6 +1,7 @@
 #ifndef TFTP_PEER_HPP
 #define TFTP_PEER_HPP
 
+#include <algorithm>
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
@@ -38,18 +39,18 @@ private:
     void start_transaction(std::string filename, std::string dst_ip, unsigned short dst_port) {
         std::cout << "send write request" << std::endl;
 
-        std::ifstream file(filename, std::ios::binary | std::ios::ate);
-        int size = file.tellg();
-        file.seekg(0, std::ios::beg);
-        std::cout << size << std::endl;
+        udp::endpoint endpoint(boost::asio::ip::make_address_v6(dst_ip), dst_port);
+        transactions_[endpoint] = tftp::Transaction();
+        tftp::Transaction &transaction = transactions_[endpoint];
 
-        auto sender_buffer = tftp::WriteRequest::serialize("re_" + filename, tftp::default_mode, {{"tsize", std::to_string(size)}});
-        sender_buffer.dump();
+        transaction.file.open(filename, std::ios::in | std::ios::binary | std::ios::ate);
+        int size = transaction.file.tellg();
+        transaction.file.seekg(0, std::ios::beg);
+        transaction.type = tftp::Transaction::Type::send;
+        transaction.state = tftp::Transaction::State::negotiate;
 
-        udp::endpoint receiver_endpoint(boost::asio::ip::make_address_v6(dst_ip), dst_port);
-        std::cout << "dst:" << receiver_endpoint << std::endl;
-
-        socket_data_.send_to(boost::asio::buffer(sender_buffer.raw_), receiver_endpoint);
+        auto packet = tftp::WriteRequest::serialize("re_" + filename, tftp::default_mode, {{"tsize", std::to_string(size)}});
+        socket_data_.send_to(boost::asio::buffer(packet.raw_), endpoint);
     }
 
     void start_receive() {
@@ -70,14 +71,15 @@ private:
                         if (parser.is_wrq()) {
                             auto wrq = parser.parser_wrq();
                             write_request_handle(wrq, remote_endpoint_);
-                        } else if (parser.is_rrq())
-                            ;
-                        else if (parser.is_data())
-                            ;
-                        else if (parser.is_ack())
-                            ;
-                        else if (parser.is_error())
-                            ;
+                        } else if (parser.is_rrq()) {
+                        } else if (parser.is_data()) {
+                            auto data = parser.parser_data();
+                            data_handle(data, remote_endpoint_);
+                        } else if (parser.is_ack()) {
+                            auto ack = parser.parser_ack();
+                            ack_handle(ack, remote_endpoint_);
+                        } else if (parser.is_error()) {
+                        }
                     } catch (std::invalid_argument &e) {
                         std::cout << "wrong format" << std::endl;
                     }
@@ -105,6 +107,37 @@ private:
                 });
         }
 
+        start_receive();
+    }
+
+    void ack_handle(tftp::Ack &ack, udp::endpoint endpoint) {
+        if (transactions_.count(endpoint)) {
+            tftp::Transaction &transaction = transactions_[endpoint];
+            transaction.state = tftp::Transaction::State::transmite;
+            transaction.block_comfirmed = std::max(ack.block(), transaction.block_comfirmed);
+
+            std::vector<uint8_t> buffer(512);
+            transaction.file.read((char *)buffer.data(), 512);
+            if (transaction.block_total < transaction.block_comfirmed + transaction.window_size) {
+                auto block = transaction.block_total;
+                auto packet = tftp::Data::serialize(block, buffer);
+                socket_data_.async_send_to(
+                    boost::asio::buffer(packet.raw_), endpoint,
+                    [this, endpoint](boost::system::error_code e, std::size_t bytes_recvd) {
+                        if (e) {
+                            transactions_[endpoint].file.close();
+                            transactions_.erase(endpoint);
+                        }
+                    });
+            }
+        }
+
+        start_receive();
+    }
+
+    void data_handle(tftp::Data &data, udp::endpoint endpoint) {
+        std::cout << "yes" << std::endl;
+        std::cout << data.block() << std::endl;
         start_receive();
     }
 };
