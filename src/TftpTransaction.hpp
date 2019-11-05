@@ -1,50 +1,84 @@
 #ifndef TFTP_TRANSACTION_HPP
 #define TFTP_TRANSACTION_HPP
 
+#include <boost/asio.hpp>
 #include <fstream>
 
+#include "Tftp.hpp"
+
+using boost::asio::ip::udp;
 namespace tftp {
-struct Transaction {
+class SendTransaction {
+public:
     enum class State { negotiate,
-                       transmite };
-    enum class Type { send,
-                      receive };
+                       transmite,
+                       finish };
 
     std::fstream file_;
     State state_;
-    Type type_;
 
     size_t size_;
     size_t last_block_size_;
-    uint16_t block_num_;
+    uint16_t block_number_;
+    uint16_t block_confirmed_ = 0;
+    uint16_t block_sended_ = 0;
 
-    uint16_t block_confirmed = 0;
-    uint16_t block_sended = 0;
-    uint16_t window_size = 1;
+    SendTransaction(std::string filename) {
+        state_ = State::transmite;
 
-    Transaction(std::string filename, Type type, State state, size_t size = 0)
-        : type_(type), state_(state) {
-        if (type_ == Type::send) {
-            file_.open(filename, std::ios::in | std::ios::binary | std::ios::ate);
-            size_ = file_.tellg();
-            file_.seekg(0, std::ios::beg);
-        } else {
-            file_.open(filename, std::ios::out | std::ios::binary);
-            size_ = size;
-        }
+        file_.open(filename, std::ios::in | std::ios::binary | std::ios::ate);
+        size_ = file_.tellg();
+        file_.seekg(0, std::ios::beg);
 
-        block_num_ = size_ / 512 + 1;
+        block_number_ = size_ / 512 + 1;
         last_block_size_ = size_ % 512;
     }
 
-    ~Transaction() {
+    ~SendTransaction() {
         file_.close();
     }
-    
+
     void confirm_ack(uint16_t block) {
-        if (block < block_sended && block >= block_confirmed) {
-            state_ = State::transmite;
-            block_confirmed  = block + 1;
+        if (block <= block_sended_ && block > block_confirmed_) {
+            block_confirmed_ = block;
+        }
+    }
+}; // namespace tftp
+
+class RecvTransaction {
+public:
+    enum class State { negotiate,
+                       transmite,
+                       finish };
+
+    std::fstream file_;
+    State state_;
+
+    size_t size_;
+    size_t last_block_size_;
+    uint16_t block_number_;
+    uint16_t block_reveived_;
+
+    RecvTransaction(std::string filename, size_t size) {
+        state_ = State::transmite;
+
+        file_.open(filename, std::ios::out | std::ios::binary);
+        size_ = size;
+
+        block_number_ = size_ / 512 + 1;
+        last_block_size_ = size_ % 512;
+    }
+
+    ~RecvTransaction() {
+        file_.close();
+    }
+
+    void receive_data(tftp::Data &data) {
+        if (state_ == State::transmite && data.block() == block_reveived_) {
+            file_.write((char *)data.data().data(), data.data().size());
+            if (data.data().size() < 512)
+                state_ = State::finish;
+            block_reveived_ += 1;
         }
     }
 };

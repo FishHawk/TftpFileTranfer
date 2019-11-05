@@ -39,7 +39,7 @@ private:
             is_valid_ = false;
             return *this;
         }
-        std::copy(raw_packet_.begin() + offset_, val.end(), std::back_inserter(val));
+        std::copy(raw_packet_.begin() + offset_, raw_packet_.end(), std::back_inserter(val));
         offset_ = raw_packet_.size();
         return *this;
     }
@@ -153,6 +153,8 @@ public:
 
         if (!((*this) >> data.data_))
             throw std::invalid_argument("invalid packet format");
+        
+        std::cout << "?????" << data.data_.size() << std::endl;
 
         return data;
     }
