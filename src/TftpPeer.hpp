@@ -34,22 +34,17 @@ private:
     udp::endpoint remote_endpoint_;
     tftp::Packet recv_buffer_;
 
-    std::map<udp::endpoint, tftp::Transaction> transactions_;
+    std::map<udp::endpoint, tftp::Transaction *> transactions_;
 
     void start_transaction(std::string filename, std::string dst_ip, unsigned short dst_port) {
         std::cout << "send write request" << std::endl;
 
         udp::endpoint endpoint(boost::asio::ip::make_address_v6(dst_ip), dst_port);
-        transactions_[endpoint] = tftp::Transaction();
-        tftp::Transaction &transaction = transactions_[endpoint];
+        auto transaction = new tftp::Transaction(filename, tftp::Transaction::Type::send, tftp::Transaction::State::negotiate);
+        transactions_[endpoint] = transaction;
+        auto size = std::to_string(transaction->size_);
 
-        transaction.file.open(filename, std::ios::in | std::ios::binary | std::ios::ate);
-        int size = transaction.file.tellg();
-        transaction.file.seekg(0, std::ios::beg);
-        transaction.type = tftp::Transaction::Type::send;
-        transaction.state = tftp::Transaction::State::negotiate;
-
-        auto packet = tftp::WriteRequest::serialize("re_" + filename, tftp::default_mode, {{"tsize", std::to_string(size)}});
+        auto packet = tftp::WriteRequest::serialize("re_" + filename, tftp::default_mode, {{"tsize", size}});
         socket_data_.send_to(boost::asio::buffer(packet.raw_), endpoint);
     }
 
@@ -63,9 +58,8 @@ private:
                 if (!e && bytes_recvd > 0) {
                     // FIXME: direct call
                     recv_buffer_.raw_.resize(bytes_recvd);
-                    recv_buffer_.dump();
                     tftp::Parser parser(recv_buffer_.raw_);
-                    std::cout << parser.is_wrq() << std::endl;
+                    // recv_buffer_.dump();
 
                     try {
                         if (parser.is_wrq()) {
@@ -82,26 +76,29 @@ private:
                         }
                     } catch (std::invalid_argument &e) {
                         std::cout << "wrong format" << std::endl;
+                        recv_buffer_.dump();
                     }
                 }
             });
     }
 
     void write_request_handle(tftp::WriteRequest &request, udp::endpoint endpoint) {
-        if (!transactions_.count(endpoint)) {
-            transactions_[endpoint] = tftp::Transaction();
-            tftp::Transaction &transaction = transactions_[endpoint];
+        std::cout << "receive: [write request] filename:" << request.filename() << " size:" << request.options().at("tsize") << std::endl;
 
-            transaction.file.open(request.filename(), std::ios::out | std::ios::binary);
-            transaction.type = tftp::Transaction::Type::receive;
-            transaction.state = tftp::Transaction::State::transmite;
+        if (!transactions_.count(endpoint)) {
+            size_t size = std::stoi(request.options().at("tsize"));
+
+            auto transaction = new tftp::Transaction(request.filename(), tftp::Transaction::Type::receive, tftp::Transaction::State::transmite, size);
+            transactions_[endpoint] = transaction;
 
             auto packet = tftp::Ack::serialize(0);
+
+            std::cout << "send: [ack] block:" << 0 << std::endl;
             socket_data_.async_send_to(
                 boost::asio::buffer(packet.raw_), endpoint,
                 [this, endpoint](boost::system::error_code e, std::size_t bytes_recvd) {
                     if (e) {
-                        transactions_[endpoint].file.close();
+                        delete transactions_[endpoint];
                         transactions_.erase(endpoint);
                     }
                 });
@@ -111,21 +108,30 @@ private:
     }
 
     void ack_handle(tftp::Ack &ack, udp::endpoint endpoint) {
-        if (transactions_.count(endpoint)) {
-            tftp::Transaction &transaction = transactions_[endpoint];
-            transaction.state = tftp::Transaction::State::transmite;
-            transaction.block_comfirmed = std::max(ack.block(), transaction.block_comfirmed);
+        std::cout << "receive: [ack] block:" << ack.block() << std::endl;
 
-            std::vector<uint8_t> buffer(512);
-            transaction.file.read((char *)buffer.data(), 512);
-            if (transaction.block_total < transaction.block_comfirmed + transaction.window_size) {
-                auto block = transaction.block_total;
+        if (transactions_.count(endpoint)) {
+            auto transaction = transactions_.at(endpoint);
+            transaction->confirm_ack(ack.block());
+
+            if (transaction->block_sended < transaction->block_confirmed + transaction->window_size) {
+                auto block = transaction->block_sended;
+                std::vector<uint8_t> buffer;
+                if (block != transaction->block_num_ - 1) {
+                    buffer.resize(512);
+                    transaction->file_.read((char *)buffer.data(), 512);
+                } else {
+                    buffer.resize(transaction->last_block_size_);
+                    transaction->file_.read((char *)buffer.data(), transaction->last_block_size_);
+                }
+            
                 auto packet = tftp::Data::serialize(block, buffer);
+
+                std::cout << "send: [data] block:" << block << std::endl;
                 socket_data_.async_send_to(
                     boost::asio::buffer(packet.raw_), endpoint,
                     [this, endpoint](boost::system::error_code e, std::size_t bytes_recvd) {
                         if (e) {
-                            transactions_[endpoint].file.close();
                             transactions_.erase(endpoint);
                         }
                     });
@@ -136,8 +142,28 @@ private:
     }
 
     void data_handle(tftp::Data &data, udp::endpoint endpoint) {
-        std::cout << "yes" << std::endl;
-        std::cout << data.block() << std::endl;
+        std::cout << "receive: [data] block:" << data.block() << std::endl;
+
+        if (transactions_.count(endpoint)) {
+            auto transaction = transactions_.at(endpoint);
+
+            // if (data.block() != transaction->block_num_ - 1)
+            //     transaction->file_.write((char *)data.data().data(), 512);
+            // else
+            //     transaction->file_.write((char *)data.data().data(), transaction->last_block_size_);
+
+            auto block = transaction->block_sended;
+            auto packet = tftp::Ack::serialize(block);
+
+            std::cout << "send: [ack] block:" << block << std::endl;
+            socket_data_.async_send_to(
+                boost::asio::buffer(packet.raw_), endpoint,
+                [this, endpoint](boost::system::error_code e, std::size_t bytes_recvd) {
+                    if (e) {
+                        transactions_.erase(endpoint);
+                    }
+                });
+        }
         start_receive();
     }
 };

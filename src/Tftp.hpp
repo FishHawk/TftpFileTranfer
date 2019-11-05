@@ -98,9 +98,12 @@ class ReadRequest {
 public:
     using Options = std::map<std::string, std::string>;
 
-    static Packet serialize(const std::string &filename, const Mode mode = default_mode, const Options = {}) {
+    static Packet serialize(const std::string &filename, const Mode mode = default_mode, const Options options = {}) {
         Packet packet;
         packet << opcode_rrq << filename << mode;
+        for (auto const &[key, val] : options) {
+            packet << key << val;
+        }
         return packet;
     }
 
@@ -120,9 +123,12 @@ class WriteRequest {
 public:
     using Options = std::map<std::string, std::string>;
 
-    static Packet serialize(const std::string &filename, const Mode mode = default_mode, const Options = {}) {
+    static Packet serialize(const std::string &filename, const Mode mode = default_mode, const Options options = {}) {
         Packet packet;
         packet << opcode_wrq << filename << mode;
+        for (auto const &[key, val] : options) {
+            packet << key << val;
+        }
         return packet;
     }
 
