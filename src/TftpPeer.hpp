@@ -14,6 +14,27 @@
 using boost::asio::ip::udp;
 using boost::asio::local::datagram_protocol;
 
+void dump(const tftp::Buffer &buffer) {
+    std::cout << "size: " << buffer.size() << std::endl;
+
+    std::cout << "data: ";
+    for (auto &c : buffer) {
+        if (isprint(c))
+            std::cout << c;
+        else
+            std::cout << '.';
+    }
+    std::cout << std::endl;
+
+    std::cout << std::hex;
+    std::cout << "hex: ";
+    for (auto &c : buffer) {
+        std::cout << (int)c << ' ';
+    }
+    std::cout << std::endl;
+    std::cout << std::dec;
+};
+
 class TftpPeer {
 public:
     static constexpr unsigned short default_port = 10000;
@@ -50,40 +71,35 @@ private:
     }
 
     void start_receive() {
-        // FIXME: direct call
         recv_buffer_.resize(1024);
 
         socket_data_.async_receive_from(
             boost::asio::buffer(recv_buffer_, 1024), remote_endpoint_,
             [this](boost::system::error_code e, std::size_t bytes_recvd) {
                 if (!e && bytes_recvd > 0) {
-                    // FIXME: direct call
                     recv_buffer_.resize(bytes_recvd);
                     tftp::Parser parser(recv_buffer_);
-                    // recv_buffer_.dump();
+                    // dump(recv_buffer_);
 
                     try {
                         if (parser.is_wrq()) {
-                            auto wrq = parser.parser_wrq();
-                            write_request_handle(wrq, remote_endpoint_);
+                            write_request_handle(parser.parser_wrq(), remote_endpoint_);
                         } else if (parser.is_rrq()) {
                         } else if (parser.is_data()) {
-                            auto data = parser.parser_data();
-                            data_handle(data, remote_endpoint_);
+                            data_message_handle(parser.parser_data(), remote_endpoint_);
                         } else if (parser.is_ack()) {
-                            auto ack = parser.parser_ack();
-                            ack_handle(ack, remote_endpoint_);
+                            ack_message_handle(parser.parser_ack(), remote_endpoint_);
                         } else if (parser.is_error()) {
                         }
                     } catch (std::invalid_argument &e) {
                         std::cout << "wrong format" << std::endl;
-                        // recv_buffer_.dump();
+                        dump(recv_buffer_);
                     }
                 }
             });
     }
 
-    void write_request_handle(tftp::WriteRequest &request, udp::endpoint endpoint) {
+    void write_request_handle(tftp::WriteRequest request, udp::endpoint endpoint) {
         std::cout << "receive: [write request] filename:" << request.filename() << " size:" << request.options().at("tsize") << std::endl;
 
         if (!recv_trans_map_.count(endpoint)) {
@@ -92,7 +108,7 @@ private:
             auto trans = new tftp::RecvTransaction(request.filename(), size);
             recv_trans_map_[endpoint] = trans;
 
-            auto packet = tftp::Ack::serialize(0);
+            auto packet = tftp::AckMessage::serialize(0);
 
             std::cout << "send: [ack] block:" << 0 << std::endl;
             socket_data_.async_send_to(
@@ -108,7 +124,7 @@ private:
         start_receive();
     }
 
-    void ack_handle(tftp::Ack &ack, udp::endpoint endpoint) {
+    void ack_message_handle(tftp::AckMessage ack, udp::endpoint endpoint) {
         std::cout << "receive: [ack] block:" << ack.block() << std::endl;
 
         if (send_trans_map_.count(endpoint)) {
@@ -127,7 +143,7 @@ private:
                     trans->file_.read((char *)buffer.data(), trans->last_block_size_);
                 }
 
-                auto packet = tftp::Data::serialize(block, buffer);
+                auto packet = tftp::DataMessage::serialize(block, buffer);
 
                 std::cout << "send: [data] block:" << block << std::endl;
                 socket_data_.async_send_to(
@@ -146,7 +162,7 @@ private:
         start_receive();
     }
 
-    void data_handle(tftp::Data &data, udp::endpoint endpoint) {
+    void data_message_handle(tftp::DataMessage data, udp::endpoint endpoint) {
         std::cout << "receive: [data] block:" << data.block() << std::endl;
 
         if (recv_trans_map_.count(endpoint)) {
@@ -154,7 +170,7 @@ private:
             trans->receive_data(data);
 
             auto block = trans->block_reveived_;
-            auto packet = tftp::Ack::serialize(block);
+            auto packet = tftp::AckMessage::serialize(block);
 
             std::cout << "send: [ack] block:" << block << std::endl;
             socket_data_.async_send_to(

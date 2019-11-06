@@ -24,61 +24,38 @@ static const std::map<Mode, const char *> mode_to_string = {
 }  // namespace tftp
 
 namespace tftp {
-
 using Buffer = std::vector<uint8_t>;
 
 class PacketBuilder {
 private:
     friend class Parser;
 
-public:
-    // TODO: raw_ type need change
-    std::vector<uint8_t> raw_;
+    std::vector<uint8_t> packet_;
 
+public:
     const Buffer &get_packet() {
-        return raw_;
+        return packet_;
     }
 
-    void dump() const {
-        std::cout << "size: " << raw_.size() << std::endl;
-
-        std::cout << "data: ";
-        for (auto &c : raw_) {
-            if (isprint(c))
-                std::cout << c;
-            else
-                std::cout << '.';
-        }
-        std::cout << std::endl;
-
-        std::cout << std::hex;
-        std::cout << "hex: ";
-        for (auto &c : raw_) {
-            std::cout << (int)c << ' ';
-        }
-        std::cout << std::endl;
-        std::cout << std::dec;
-    };
-
     PacketBuilder &operator<<(uint8_t val) {
-        raw_.push_back(val);
+        packet_.push_back(val);
         return *this;
     };
 
     PacketBuilder &operator<<(uint16_t val) {
-        raw_.push_back(*(((uint8_t *)&val) + 1));
-        raw_.push_back(*((uint8_t *)&val));
+        packet_.push_back(*(((uint8_t *)&val) + 1));
+        packet_.push_back(*((uint8_t *)&val));
         return *this;
     };
 
     PacketBuilder &operator<<(const std::string &val) {
-        std::copy(val.begin(), val.end(), std::back_inserter(raw_));
-        raw_.push_back(0);
+        std::copy(val.begin(), val.end(), std::back_inserter(packet_));
+        packet_.push_back(0);
         return *this;
     };
 
     PacketBuilder &operator<<(const std::vector<uint8_t> &val) {
-        std::copy(val.begin(), val.end(), std::back_inserter(raw_));
+        std::copy(val.begin(), val.end(), std::back_inserter(packet_));
         return *this;
     };
 

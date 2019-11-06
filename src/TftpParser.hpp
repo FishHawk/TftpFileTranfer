@@ -11,7 +11,7 @@ namespace tftp {
 
 class Parser {
 private:
-    std::vector<uint8_t> &raw_packet_;
+    Buffer &raw_packet_;
     bool is_valid_ = true;
     unsigned int offset_ = 0;
     uint16_t opcode_ = 0;
@@ -92,7 +92,7 @@ private:
     }
 
 public:
-    Parser(std::vector<uint8_t> &raw_packet)
+    Parser(Buffer &raw_packet)
         : raw_packet_(raw_packet) {
         (*this) >> opcode_;
     }
@@ -143,11 +143,11 @@ public:
         return wrq;
     }
 
-    Data parser_data() {
+    DataMessage parser_data() {
         if (!is_data())
             throw std::invalid_argument("invalid packet format");
 
-        Data data;
+        DataMessage data;
         if (!((*this) >> data.block_))
             throw std::invalid_argument("invalid packet format");
 
@@ -157,11 +157,11 @@ public:
         return data;
     }
 
-    Ack parser_ack() {
+    AckMessage parser_ack() {
         if (!is_ack())
             throw std::invalid_argument("invalid packet format");
 
-        Ack ack;
+        AckMessage ack;
         if (!((*this) >> ack.block_))
             throw std::invalid_argument("invalid packet format");
 

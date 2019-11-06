@@ -6,7 +6,6 @@
 
 #include "TftpPacketBuilder.hpp"
 
-
 namespace tftp {
 class ReadRequest {
 public:
@@ -21,9 +20,9 @@ public:
         return packet.get_packet();
     }
 
-    const std::string &filename() { return filename_; }
-    const Mode &mode() { return mode_; }
-    const Options &options() { return options_; }
+    const std::string &filename() const { return filename_; }
+    const Mode &mode() const { return mode_; }
+    const Options &options() const { return options_; }
 
 private:
     friend class Parser;
@@ -46,9 +45,9 @@ public:
         return builder.get_packet();
     }
 
-    const std::string &filename() { return filename_; }
-    const Mode &mode() { return mode_; }
-    const Options &options() { return options_; }
+    const std::string &filename() const { return filename_; }
+    const Mode &mode() const { return mode_; }
+    const Options &options() const { return options_; }
 
 private:
     friend class Parser;
@@ -58,7 +57,7 @@ private:
     Options options_;
 };
 
-class Data {
+class DataMessage {
 public:
     static Buffer serialize(const uint16_t block, std::vector<uint8_t> data) {
         PacketBuilder builder;
@@ -66,8 +65,8 @@ public:
         return builder.get_packet();
     }
 
-    const uint16_t block() { return block_; }
-    const std::vector<uint8_t> &data() { return data_; }
+    const uint16_t block() const { return block_; }
+    const std::vector<uint8_t> &data() const { return data_; }
 
 private:
     friend class Parser;
@@ -76,7 +75,7 @@ private:
     std::vector<uint8_t> data_;
 };
 
-class Ack {
+class AckMessage {
 public:
     static Buffer serialize(const uint16_t block) {
         PacketBuilder builder;
@@ -84,7 +83,7 @@ public:
         return builder.get_packet();
     }
 
-    const uint16_t block() { return block_; }
+    const uint16_t block() const { return block_; }
 
 private:
     friend class Parser;
@@ -112,8 +111,8 @@ public:
         return builder.get_packet();
     }
 
-    const uint16_t error_code() { return error_code_; }
-    const std::string &error_msg() { return error_msg_; }
+    const uint16_t error_code() const { return error_code_; }
+    const std::string &error_msg() const { return error_msg_; }
 
 private:
     friend class Parser;

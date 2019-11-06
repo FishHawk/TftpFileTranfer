@@ -43,7 +43,7 @@ public:
             block_confirmed_ = block;
         }
     }
-}; // namespace tftp
+};
 
 class RecvTransaction {
 public:
@@ -73,7 +73,7 @@ public:
         file_.close();
     }
 
-    void receive_data(tftp::Data &data) {
+    void receive_data(tftp::DataMessage &data) {
         if (state_ == State::transmite && data.block() == block_reveived_) {
             file_.write((char *)data.data().data(), data.data().size());
             if (data.data().size() < 512)
@@ -82,6 +82,6 @@ public:
         }
     }
 };
-} // namespace tftp
+}  // namespace tftp
 
 #endif
