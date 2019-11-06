@@ -154,8 +154,6 @@ public:
         if (!((*this) >> data.data_))
             throw std::invalid_argument("invalid packet format");
         
-        std::cout << "?????" << data.data_.size() << std::endl;
-
         return data;
     }
 

@@ -126,7 +126,6 @@ private:
                     buffer.resize(trans->last_block_size_);
                     trans->file_.read((char *)buffer.data(), trans->last_block_size_);
                 }
-                std::cout << "!!!!!" << buffer.size() << std::endl;
 
                 auto packet = tftp::Data::serialize(block, buffer);
 
