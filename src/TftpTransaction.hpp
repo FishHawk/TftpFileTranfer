@@ -4,7 +4,7 @@
 #include <boost/asio.hpp>
 #include <fstream>
 
-#include "Tftp.hpp"
+#include "TftpMessage.hpp"
 
 using boost::asio::ip::udp;
 namespace tftp {

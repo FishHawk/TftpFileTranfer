@@ -5,7 +5,7 @@
 #include <cctype>
 #include <string>
 
-#include "Tftp.hpp"
+#include "TftpMessage.hpp"
 
 namespace tftp {
 

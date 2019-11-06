@@ -7,7 +7,7 @@
 #include <boost/bind.hpp>
 #include <fstream>
 
-#include "Tftp.hpp"
+#include "TftpMessage.hpp"
 #include "TftpParser.hpp"
 #include "TftpTransaction.hpp"
 
@@ -32,7 +32,7 @@ public:
 private:
     udp::socket socket_data_;
     udp::endpoint remote_endpoint_;
-    tftp::Packet recv_buffer_;
+    tftp::Buffer recv_buffer_;
 
     std::map<udp::endpoint, tftp::SendTransaction *> send_trans_map_;
     std::map<udp::endpoint, tftp::RecvTransaction *> recv_trans_map_;
@@ -46,20 +46,20 @@ private:
         auto size = std::to_string(trans->size_);
 
         auto packet = tftp::WriteRequest::serialize("re_" + filename, tftp::default_mode, {{"tsize", size}});
-        socket_data_.send_to(boost::asio::buffer(packet.raw_), endpoint);
+        socket_data_.send_to(boost::asio::buffer(packet), endpoint);
     }
 
     void start_receive() {
         // FIXME: direct call
-        recv_buffer_.raw_.resize(1024);
+        recv_buffer_.resize(1024);
 
         socket_data_.async_receive_from(
-            boost::asio::buffer(recv_buffer_.raw_, 1024), remote_endpoint_,
+            boost::asio::buffer(recv_buffer_, 1024), remote_endpoint_,
             [this](boost::system::error_code e, std::size_t bytes_recvd) {
                 if (!e && bytes_recvd > 0) {
                     // FIXME: direct call
-                    recv_buffer_.raw_.resize(bytes_recvd);
-                    tftp::Parser parser(recv_buffer_.raw_);
+                    recv_buffer_.resize(bytes_recvd);
+                    tftp::Parser parser(recv_buffer_);
                     // recv_buffer_.dump();
 
                     try {
@@ -77,7 +77,7 @@ private:
                         }
                     } catch (std::invalid_argument &e) {
                         std::cout << "wrong format" << std::endl;
-                        recv_buffer_.dump();
+                        // recv_buffer_.dump();
                     }
                 }
             });
@@ -96,7 +96,7 @@ private:
 
             std::cout << "send: [ack] block:" << 0 << std::endl;
             socket_data_.async_send_to(
-                boost::asio::buffer(packet.raw_), endpoint,
+                boost::asio::buffer(packet), endpoint,
                 [this, endpoint](boost::system::error_code e, std::size_t bytes_recvd) {
                     if (e) {
                         delete recv_trans_map_[endpoint];
@@ -131,7 +131,7 @@ private:
 
                 std::cout << "send: [data] block:" << block << std::endl;
                 socket_data_.async_send_to(
-                    boost::asio::buffer(packet.raw_), endpoint,
+                    boost::asio::buffer(packet), endpoint,
                     [this, endpoint](boost::system::error_code e, std::size_t bytes_recvd) {
                         if (e) {
                             delete send_trans_map_[endpoint];
@@ -158,7 +158,7 @@ private:
 
             std::cout << "send: [ack] block:" << block << std::endl;
             socket_data_.async_send_to(
-                boost::asio::buffer(packet.raw_), endpoint,
+                boost::asio::buffer(packet), endpoint,
                 [this, endpoint](boost::system::error_code e, std::size_t bytes_recvd) {
                     if (e) {
                         delete recv_trans_map_[endpoint];

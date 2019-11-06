@@ -5,10 +5,6 @@ find_package(Threads REQUIRED)
 find_package(Boost 1.71.0 REQUIRED COMPONENTS system )
 
 add_executable(tftp
-    TftpPeer.hpp
-    TftpTransaction.hpp
-    TftpParser.hpp
-    Tftp.hpp
     main.cpp)
 
 target_link_libraries(tftp
