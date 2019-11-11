@@ -104,7 +104,6 @@ private:
                             write_request_handle(parser.parser_wrq(), endpoint_cmd_);
                         } else if (parser.is_rrq()) {
                             read_request_handle(parser.parser_rrq(), endpoint_cmd_);
-                        } else if (parser.is_error()) {
                         }
                     } catch (std::invalid_argument &e) {
                         std::cout << "wrong format" << std::endl;
@@ -130,6 +129,7 @@ private:
                         } else if (parser.is_ack()) {
                             ack_message_handle(parser.parser_ack(), endpoint_data_);
                         } else if (parser.is_error()) {
+                            error_response_handle(parser.parser_error(), endpoint_data_);
                         }
                     } catch (std::invalid_argument &e) {
                         std::cout << "wrong format" << std::endl;
@@ -191,8 +191,9 @@ private:
 
         start_receive_request();
     }
+
     void ack_message_handle(tftp::AckMessage ack, udp::endpoint endpoint) {
-        std::cout << "receive: [ack] block:" << ack.block() << std::endl;
+        // std::cout << "receive: [ack] block:" << ack.block() << std::endl;
 
         if (ack.block() == 0) {
             if (pre_send_trans_map_.count(endpoint.address())) {
@@ -213,7 +214,7 @@ private:
                 auto buffer = trans->get_next_block();
                 auto packet = tftp::DataMessage::serialize(ack.block(), buffer);
 
-                std::cout << "send: [data] block:" << ack.block() << std::endl;
+                // std::cout << "send: [data] block:" << ack.block() << std::endl;
                 socket_data_.async_send_to(
                     boost::asio::buffer(packet), endpoint,
                     [this, endpoint](boost::system::error_code e, std::size_t bytes_recvd) {
@@ -232,7 +233,7 @@ private:
     }
 
     void data_message_handle(tftp::DataMessage data, udp::endpoint endpoint) {
-        std::cout << "receive: [data] block:" << data.block() << std::endl;
+        // std::cout << "receive: [data] block:" << data.block() << std::endl;
 
         if (data.block() == 0) {
             if (pre_recv_trans_map_.count(endpoint.address())) {
@@ -250,7 +251,7 @@ private:
                 } else {
                     auto packet = tftp::AckMessage::serialize(data.block() + 1);
 
-                    std::cout << "send: [ack] block:" << data.block() + 1 << std::endl;
+                    // std::cout << "send: [ack] block:" << data.block() + 1 << std::endl;
                     socket_data_.async_send_to(
                         boost::asio::buffer(packet), endpoint,
                         [this, endpoint](boost::system::error_code e, std::size_t bytes_recvd) {
@@ -263,6 +264,57 @@ private:
             }
         }
         start_receive_data();
+    }
+
+    void error_response_handle(tftp::ErrorResponse response, udp::endpoint endpoint) {
+        bool pre_send_check = false, pre_recv_check = false,
+             send_check = false, recv_check = false;
+
+        switch (response.error_code()) {
+        case 0: // Not defined.
+            break;
+        case 1: // File not found.
+            pre_recv_check = true;
+            break;
+        case 2: // Access violation.
+            pre_recv_check = pre_send_check = true;
+            break;
+        case 3: // Disk full or allocation exceeded.
+            recv_check = send_check = true;
+            break;
+        case 4: // Illegal TFTP operation.
+            recv_check = send_check = true;
+            break;
+        case 5: // Unknown transfer ID.
+            break;
+        case 6: // File already exists.
+            pre_send_check = true;
+            break;
+        case 7: // No such user.
+            break;
+        default:
+            break;
+        }
+
+        if (pre_recv_check) {
+            delete pre_recv_trans_map_[endpoint.address()];
+            pre_recv_trans_map_.erase(endpoint.address());
+        }
+
+        if (pre_send_check) {
+            delete pre_send_trans_map_[endpoint.address()];
+            pre_send_trans_map_.erase(endpoint.address());
+        }
+
+        if (recv_check) {
+            delete recv_trans_map_[endpoint];
+            recv_trans_map_.erase(endpoint);
+        }
+
+        if (send_check) {
+            delete send_trans_map_[endpoint];
+            send_trans_map_.erase(endpoint);
+        }
     }
 };
 
