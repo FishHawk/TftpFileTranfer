@@ -27,7 +27,14 @@ int main(int argc, char *argv[]) {
                 cmd >> filename >> dst_ip >> dst_port;
                 boost::asio::ip::udp::endpoint endpoint(boost::asio::ip::make_address_v6(dst_ip), dst_port);
 
-                peer.start_transaction(filename, endpoint);
+                peer.start_write_transaction(filename, endpoint);
+            } else if (op == "get") {
+                std::string filename, dst_ip;
+                uint16_t dst_port;
+                cmd >> filename >> dst_ip >> dst_port;
+                boost::asio::ip::udp::endpoint endpoint(boost::asio::ip::make_address_v6(dst_ip), dst_port);
+
+                peer.start_read_transaction(filename, endpoint);
             } else {
                 std::cout << "wrong format" << std::endl;
             }

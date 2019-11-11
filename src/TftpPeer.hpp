@@ -52,7 +52,7 @@ public:
         start_receive_data();
     }
 
-    void start_transaction(std::string filename, udp::endpoint endpoint) {
+    void start_write_transaction(std::string filename, udp::endpoint endpoint) {
         std::cout << "send write request " << filename << " " << endpoint << std::endl;
 
         auto trans = new tftp::SendTransaction(filename);
@@ -60,6 +60,16 @@ public:
         auto size = std::to_string(std::filesystem::file_size(filename));
 
         auto packet = tftp::WriteRequest::serialize("re_" + filename, tftp::default_mode, {{"tsize", size}});
+        socket_data_.send_to(boost::asio::buffer(packet), endpoint);
+    }
+
+    void start_read_transaction(std::string filename, udp::endpoint endpoint) {
+        std::cout << "send read request " << filename << " " << endpoint << std::endl;
+
+        auto trans = new tftp::RecvTransaction("re_" + filename);
+        pre_recv_trans_map_[endpoint.address()] = trans;
+
+        auto packet = tftp::ReadRequest::serialize(filename);
         socket_data_.send_to(boost::asio::buffer(packet), endpoint);
     }
 
@@ -93,6 +103,7 @@ private:
                         if (parser.is_wrq()) {
                             write_request_handle(parser.parser_wrq(), endpoint_cmd_);
                         } else if (parser.is_rrq()) {
+                            read_request_handle(parser.parser_rrq(), endpoint_cmd_);
                         } else if (parser.is_error()) {
                         }
                     } catch (std::invalid_argument &e) {
@@ -129,9 +140,9 @@ private:
     }
 
     void write_request_handle(tftp::WriteRequest request, udp::endpoint endpoint) {
-        std::cout << "receive: [write request] filename:" << request.filename() << " size:" << request.options().at("tsize") << std::endl;
+        // std::cout << "receive: [write request] filename:" << request.filename() << " size:" << request.options().at("tsize") << std::endl;
 
-        if (!recv_trans_map_.count(endpoint)) {
+        if (!recv_trans_map_.count(endpoint) && !pre_recv_trans_map_.count(endpoint.address())) {
 
             size_t size = std::stoi(request.options().at("tsize"));
 
@@ -140,7 +151,7 @@ private:
 
             auto packet = tftp::AckMessage::serialize(0);
 
-            std::cout << "send: [ack] block:" << 0 << std::endl;
+            // std::cout << "send: [ack] block:" << 0 << std::endl;
             socket_data_.async_send_to(
                 boost::asio::buffer(packet), endpoint,
                 [this, endpoint](boost::system::error_code e, std::size_t bytes_recvd) {
@@ -154,6 +165,32 @@ private:
         start_receive_request();
     }
 
+    void read_request_handle(tftp::ReadRequest request, udp::endpoint endpoint) {
+        // std::cout << "receive: [read request] filename:" << request.filename() << std::endl;
+
+        if (!send_trans_map_.count(endpoint) && !pre_send_trans_map_.count(endpoint.address())) {
+            auto trans = new tftp::SendTransaction(request.filename());
+            send_trans_map_[endpoint] = trans;
+
+            auto buffer = trans->get_next_block();
+            auto packet = tftp::DataMessage::serialize(0, buffer);
+
+            // std::cout << "send: [data] block:" << 0 << std::endl;
+            socket_data_.async_send_to(
+                boost::asio::buffer(packet), endpoint,
+                [this, endpoint](boost::system::error_code e, std::size_t bytes_recvd) {
+                    if (e) {
+                        delete send_trans_map_[endpoint];
+                        send_trans_map_.erase(endpoint);
+                    } else {
+                        auto trans = send_trans_map_.at(endpoint);
+                        trans->confirm_sended();
+                    }
+                });
+        }
+
+        start_receive_request();
+    }
     void ack_message_handle(tftp::AckMessage ack, udp::endpoint endpoint) {
         std::cout << "receive: [ack] block:" << ack.block() << std::endl;
 
