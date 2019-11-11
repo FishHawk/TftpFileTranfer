@@ -5,6 +5,9 @@
 #include <vector>
 
 namespace tftp {
+static const uint16_t default_port = 10000;
+static const size_t block_size = 512;
+
 static const uint16_t opcode_rrq = 1;
 static const uint16_t opcode_wrq = 2;
 static const uint16_t opcode_data = 3;
@@ -21,7 +24,7 @@ static const std::map<Mode, const char *> mode_to_string = {
     {Mode::octet, "octet"},
     {Mode::mail, "mail"},
 };
-}  // namespace tftp
+} // namespace tftp
 
 namespace tftp {
 using Buffer = std::vector<uint8_t>;
@@ -74,6 +77,6 @@ public:
         return *this;
     };
 };
-}  // namespace tftp
+} // namespace tftp
 
 #endif
