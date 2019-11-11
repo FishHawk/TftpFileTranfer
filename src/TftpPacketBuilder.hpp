@@ -3,6 +3,8 @@
 
 #include <cstdint>
 #include <vector>
+#include <map>
+#include <string>
 
 namespace tftp {
 static const uint16_t default_port = 10000;

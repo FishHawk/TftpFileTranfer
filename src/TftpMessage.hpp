@@ -1,9 +1,6 @@
 #ifndef TFTP_HPP
 #define TFTP_HPP
 
-#include <iostream>
-#include <map>
-
 #include "TftpPacketBuilder.hpp"
 
 namespace tftp {
@@ -121,5 +118,5 @@ private:
     std::string error_msg_;
 };
 
-}  // namespace tftp
+} // namespace tftp
 #endif
