@@ -249,8 +249,12 @@ private:
                     delete recv_trans_map_[endpoint];
                     recv_trans_map_.erase(endpoint);
                 } else {
-                    auto packet = tftp::AckMessage::serialize(data.block() + 1);
+                    // // control transmit speed, used for test
+                    // boost::asio::deadline_timer t(io_context_, boost::posix_time::milliseconds(5));
+                    // t.wait();
 
+                    auto packet = tftp::AckMessage::serialize(data.block() + 1);
+                    
                     // std::cout << "send: [ack] block:" << data.block() + 1 << std::endl;
                     socket_data_.async_send_to(
                         boost::asio::buffer(packet), endpoint,

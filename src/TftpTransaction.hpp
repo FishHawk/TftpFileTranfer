@@ -4,7 +4,9 @@
 #include <boost/asio.hpp>
 #include <chrono>
 #include <fstream>
+#include <iostream>
 
+#include "SpeedMonitor.hpp"
 #include "TftpMessage.hpp"
 
 using boost::asio::ip::udp;
@@ -50,7 +52,13 @@ public:
     }
 
     void confirm_sended() {
+        speed_monitor.tick();
         block_sended_ += 1;
+    }
+
+    // return send speed, unit bytes/s
+    double speed() {
+        return tftp::block_size * speed_monitor.speed();
     }
 
 private:
@@ -62,6 +70,8 @@ private:
     size_t last_block_size_;
     uint16_t block_number_;
     uint16_t block_sended_ = 0;
+
+    SpeedMonitor speed_monitor;
 };
 
 class RecvTransaction {
@@ -88,6 +98,8 @@ public:
     }
 
     bool receive_data(tftp::DataMessage &data) {
+        speed_monitor.tick();
+
         auto block = data.block();
         if (block != block_reveived_) {
             return false;
@@ -102,12 +114,19 @@ public:
         }
     }
 
+    // return send speed, unit bytes/s
+    double speed() {
+        return tftp::block_size * speed_monitor.speed();
+    }
+
 private:
     std::string filename_;
     std::fstream file_;
 
     bool is_finished_ = false;
     uint16_t block_reveived_ = 0;
+
+    SpeedMonitor speed_monitor;
 
     // for option "tsize"
     bool has_size_option_ = false;
