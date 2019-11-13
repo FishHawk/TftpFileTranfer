@@ -122,9 +122,9 @@ class OptionAckMessage {
 public:
     using Options = std::map<std::string, std::string>;
 
-    static Buffer serialize(const std::string &filename, const Mode mode = default_mode, const Options options = {}) {
+    static Buffer serialize(const Options options = {}) {
         PacketBuilder builder;
-        builder << opcode_wrq << filename << mode;
+        builder << opcode_oack;
         for (auto const &[key, val] : options) {
             builder << key << val;
         }

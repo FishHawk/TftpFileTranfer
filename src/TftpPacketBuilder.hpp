@@ -8,7 +8,10 @@
 
 namespace tftp {
 static const uint16_t default_port = 10000;
+
 static const size_t block_size = 512;
+static const size_t max_block_size = 65464;
+static const size_t min_block_size = 8;
 
 static const uint16_t opcode_rrq = 1;
 static const uint16_t opcode_wrq = 2;

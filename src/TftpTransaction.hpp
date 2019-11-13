@@ -61,6 +61,16 @@ public:
         return tftp::block_size * speed_monitor.speed();
     }
 
+    bool set_option_blksize(uint16_t blksize) {
+        if (blksize <= tftp::max_block_size && blksize >= tftp::min_block_size) {
+            has_blksize_option_ = true;
+            block_size_ = blksize;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
 private:
     std::string filename_;
     std::fstream file_;
@@ -72,6 +82,10 @@ private:
     uint16_t block_sended_ = 0;
 
     SpeedMonitor speed_monitor;
+
+    // for option "blksize"
+    bool has_blksize_option_ = false;
+    uint16_t block_size_ = tftp::block_size;
 };
 
 class RecvTransaction {
@@ -84,9 +98,6 @@ public:
     RecvTransaction(std::string filename, size_t size) {
         filename_ = filename;
         file_.open(filename, std::ios::out | std::ios::binary);
-
-        has_size_option_ = true;
-        size_ = size;
     }
 
     ~RecvTransaction() {
@@ -105,7 +116,7 @@ public:
             return false;
         } else {
             file_.write((char *)data.data().data(), data.data().size());
-            if (data.data().size() < tftp::block_size) {
+            if (data.data().size() < block_size_) {
                 is_finished_ = true;
             }
 
@@ -116,7 +127,23 @@ public:
 
     // return send speed, unit bytes/s
     double speed() {
-        return tftp::block_size * speed_monitor.speed();
+        return block_size_ * speed_monitor.speed();
+    }
+
+    bool set_option_tsize(size_t size) {
+        has_size_option_ = true;
+        size_ = size;
+        return true;
+    }
+
+    bool set_option_blksize(uint16_t blksize) {
+        if (blksize <= tftp::max_block_size && blksize >= tftp::min_block_size) {
+            has_blksize_option_ = true;
+            block_size_ = blksize;
+            return true;
+        } else {
+            return false;
+        }
     }
 
 private:
@@ -131,7 +158,11 @@ private:
     // for option "tsize"
     bool has_size_option_ = false;
     size_t size_ = 0;
+
+    // for option "blksize"
+    bool has_blksize_option_ = false;
+    uint16_t block_size_ = tftp::block_size;
 };
-} // namespace tftp
+}  // namespace tftp
 
 #endif

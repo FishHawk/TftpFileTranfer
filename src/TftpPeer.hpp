@@ -42,7 +42,6 @@ public:
         : io_context_(io_context),
           socket_cmd_(io_context, udp::v6()),
           socket_data_(io_context, udp::v6()) {
-
         socket_cmd_.bind(udp::endpoint(udp::v6(), port));
         socket_data_.bind(udp::endpoint(udp::v6(), 0));
         std::cout << "socket cmd bind to " << socket_cmd_.local_endpoint() << std::endl;
@@ -55,20 +54,34 @@ public:
     void start_write_transaction(std::string filename, udp::endpoint endpoint) {
         std::cout << "send write request " << filename << " " << endpoint << std::endl;
 
+        // registe a send transaction
         auto trans = new tftp::SendTransaction(filename);
         pre_send_trans_map_[endpoint.address()] = trans;
-        auto size = std::to_string(std::filesystem::file_size(filename));
 
-        auto packet = tftp::WriteRequest::serialize("re_" + filename, tftp::default_mode, {{"tsize", size}});
+        // set options
+        tftp::WriteRequest::Options request_options;
+        auto size = std::to_string(std::filesystem::file_size(filename));
+        request_options["tsize"] = size;
+        request_options["blksize"] = "1024";
+
+        // send write request
+        auto packet = tftp::WriteRequest::serialize("re_" + filename, tftp::default_mode, request_options);
         socket_data_.send_to(boost::asio::buffer(packet), endpoint);
     }
 
     void start_read_transaction(std::string filename, udp::endpoint endpoint) {
         std::cout << "send read request " << filename << " " << endpoint << std::endl;
 
+        // registe a recv transaction
         auto trans = new tftp::RecvTransaction("re_" + filename);
         pre_recv_trans_map_[endpoint.address()] = trans;
 
+        // set options
+        tftp::ReadRequest::Options request_options;
+        request_options["tsize"] = "";
+        request_options["blksize"] = "1024";
+
+        // send read request
         auto packet = tftp::ReadRequest::serialize(filename);
         socket_data_.send_to(boost::asio::buffer(packet), endpoint);
     }
@@ -124,7 +137,8 @@ private:
                     tftp::Parser parser(buffer_data_);
 
                     try {
-                        if (parser.is_data()) {
+                        if (parser.is_oack()) {
+                        } else if (parser.is_data()) {
                             data_message_handle(parser.parser_data(), endpoint_data_);
                         } else if (parser.is_ack()) {
                             ack_message_handle(parser.parser_ack(), endpoint_data_);
@@ -143,15 +157,33 @@ private:
         // std::cout << "receive: [write request] filename:" << request.filename() << " size:" << request.options().at("tsize") << std::endl;
 
         if (!recv_trans_map_.count(endpoint) && !pre_recv_trans_map_.count(endpoint.address())) {
-
-            size_t size = std::stoi(request.options().at("tsize"));
-
-            auto trans = new tftp::RecvTransaction(request.filename(), size);
+            auto trans = new tftp::RecvTransaction(request.filename());
             recv_trans_map_[endpoint] = trans;
 
-            auto packet = tftp::AckMessage::serialize(0);
+            // process options
+            auto &request_options = request.options();
+            tftp::OptionAckMessage::Options return_oack;
+            if (request_options.count("tsize")) {
+                size_t size = std::stoi(request_options.at("tsize"));
+                if (trans->set_option_tsize(size))
+                    return_oack["tsize"] = request_options.at("tsize");
+            } else if (request_options.count("blksize")) {
+                uint16_t blksize = std::stoi(request_options.at("blksizke"));
+                if (trans->set_option_blksize(blksize))
+                    return_oack["blksize"] = request_options.at("blksize");
+            }
 
-            // std::cout << "send: [ack] block:" << 0 << std::endl;
+            // construct reply packet
+            tftp::Buffer packet;
+            if (request_options.empty()) {
+                // std::cout << "send: [ack] block:" << 0 << std::endl;
+                packet = tftp::AckMessage::serialize(0);
+            } else {
+                // std::cout << "send: [oack]" <<  std::endl;
+                packet = tftp::OptionAckMessage::serialize(request_options);
+            }
+
+            // send reply packet
             socket_data_.async_send_to(
                 boost::asio::buffer(packet), endpoint,
                 [this, endpoint](boost::system::error_code e, std::size_t bytes_recvd) {
@@ -172,10 +204,33 @@ private:
             auto trans = new tftp::SendTransaction(request.filename());
             send_trans_map_[endpoint] = trans;
 
-            auto buffer = trans->get_next_block();
-            auto packet = tftp::DataMessage::serialize(0, buffer);
+            // process options
+            auto &request_options = request.options();
+            tftp::OptionAckMessage::Options return_oack;
+            if (request_options.count("tsize")) {
+                size_t size = std::stoi(request_options.at("tsize"));
+                if (size == 0) {
+                    auto new_size = std::to_string(std::filesystem::file_size(request.filename()));
+                    return_oack["tsize"] = new_size;
+                }
+            } else if (request_options.count("blksize")) {
+                uint16_t blksize = std::stoi(request_options.at("blksizke"));
+                if (trans->set_option_blksize(blksize))
+                    return_oack["blksize"] = request_options.at("blksize");
+            }
 
-            // std::cout << "send: [data] block:" << 0 << std::endl;
+            // construct reply packet
+            tftp::Buffer packet;
+            if (request_options.empty()) {
+                // std::cout << "send: [data] block:" << 0 << std::endl;
+                auto data_block = trans->get_next_block();
+                packet = tftp::DataMessage::serialize(0, data_block);
+            } else {
+                // std::cout << "send: [oack]" <<  std::endl;
+                packet = tftp::OptionAckMessage::serialize(request_options);
+            }
+
+            // send reply packet
             socket_data_.async_send_to(
                 boost::asio::buffer(packet), endpoint,
                 [this, endpoint](boost::system::error_code e, std::size_t bytes_recvd) {
@@ -254,7 +309,7 @@ private:
                     // t.wait();
 
                     auto packet = tftp::AckMessage::serialize(data.block() + 1);
-                    
+
                     // std::cout << "send: [ack] block:" << data.block() + 1 << std::endl;
                     socket_data_.async_send_to(
                         boost::asio::buffer(packet), endpoint,
@@ -275,26 +330,26 @@ private:
              send_check = false, recv_check = false;
 
         switch (response.error_code()) {
-        case 0: // Not defined.
+        case 0:  // Not defined.
             break;
-        case 1: // File not found.
+        case 1:  // File not found.
             pre_recv_check = true;
             break;
-        case 2: // Access violation.
+        case 2:  // Access violation.
             pre_recv_check = pre_send_check = true;
             break;
-        case 3: // Disk full or allocation exceeded.
+        case 3:  // Disk full or allocation exceeded.
             recv_check = send_check = true;
             break;
-        case 4: // Illegal TFTP operation.
+        case 4:  // Illegal TFTP operation.
             recv_check = send_check = true;
             break;
-        case 5: // Unknown transfer ID.
+        case 5:  // Unknown transfer ID.
             break;
-        case 6: // File already exists.
+        case 6:  // File already exists.
             pre_send_check = true;
             break;
-        case 7: // No such user.
+        case 7:  // No such user.
             break;
         default:
             break;
