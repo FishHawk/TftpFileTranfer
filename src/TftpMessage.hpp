@@ -118,5 +118,26 @@ private:
     std::string error_msg_;
 };
 
-} // namespace tftp
+class OptionAckMessage {
+public:
+    using Options = std::map<std::string, std::string>;
+
+    static Buffer serialize(const std::string &filename, const Mode mode = default_mode, const Options options = {}) {
+        PacketBuilder builder;
+        builder << opcode_wrq << filename << mode;
+        for (auto const &[key, val] : options) {
+            builder << key << val;
+        }
+        return builder.get_packet();
+    }
+
+    const Options &options() const { return options_; }
+
+private:
+    friend class Parser;
+
+    Options options_;
+};
+
+}  // namespace tftp
 #endif

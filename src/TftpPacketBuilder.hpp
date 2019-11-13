@@ -15,6 +15,7 @@ static const uint16_t opcode_wrq = 2;
 static const uint16_t opcode_data = 3;
 static const uint16_t opcode_ack = 4;
 static const uint16_t opcode_error = 5;
+static const uint16_t opcode_oack = 6;
 
 enum class Mode { netascii,
                   octet,

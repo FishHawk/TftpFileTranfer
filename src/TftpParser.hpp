@@ -102,6 +102,7 @@ public:
     bool is_data() { return opcode_ == opcode_data; }
     bool is_ack() { return opcode_ == opcode_ack; }
     bool is_error() { return opcode_ == opcode_error; }
+    bool is_oack() { return opcode_ == opcode_oack; }
 
     ReadRequest parser_rrq() {
         if (!is_rrq())
@@ -180,6 +181,20 @@ public:
             throw std::invalid_argument("invalid packet format");
 
         return error;
+    }
+
+    OptionAckMessage parser_oack() {
+        if (!is_oack())
+            throw std::invalid_argument("invalid packet format");
+
+        OptionAckMessage oack;
+        while (offset_ < raw_packet_.size()) {
+            std::string key, val;
+            if (!((*this) >> key >> val))
+                throw std::invalid_argument("invalid packet format");
+            oack.options_[key] = val;
+        }
+        return oack; 
     }
 };
 
