@@ -7,14 +7,16 @@
 该项目不是TFTP的完整实现， 同时有一些细节与RFC不同。
 
 **支持的功能：**
-
-- 大部分TFTP报文的构造与解析，参见[RFC1350](https://tools.ietf.org/html/rfc1350)与[RFC2347](https://tools.ietf.org/html/rfc2347)。
-- octet的读请求与写请求处理。
+朝从
+- octet类型的TFTP读写请求处理，参见[RFC1350](https://tools.ietf.org/html/rfc1350)
+- 支持选项字段与oack的处理，参见[RFC2347](https://tools.ietf.org/html/rfc2347)
+- 支持tsize选项，参见[RFC2349](https://tools.ietf.org/html/rfc2349)
+- 支持blksize选项，调整block大小，参见[RFC2348](https://tools.ietf.org/html/rfc2348)
+- 可以测量传输速度
 
 **不支持的功能：**
 
 - 对于netascii与mail类型报文的处理。
-- OACK报文的构造与解析。
 - DATA与ACK报文的计时重传。
 
 **与RFC的区别：**
