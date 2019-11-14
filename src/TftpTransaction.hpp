@@ -17,11 +17,11 @@ public:
     SendTransaction(std::string filename) {
         filename_ = filename;
         file_.open(filename, std::ios::in | std::ios::binary | std::ios::ate);
-        auto size = file_.tellg();
+        size_ = file_.tellg();
         file_.seekg(0, std::ios::beg);
 
-        block_number_ = size / tftp::block_size + 1;
-        last_block_size_ = size % tftp::block_size;
+        block_number_ = size_ / block_size_ + 1;
+        last_block_size_ = size_ % block_size_;
     }
 
     ~SendTransaction() {
@@ -42,8 +42,8 @@ public:
     Buffer get_next_block() {
         Buffer buffer;
         if (block_sended_ < block_number_ - 1) {
-            buffer.resize(512);
-            file_.read((char *)buffer.data(), 512);
+            buffer.resize(block_size_);
+            file_.read((char *)buffer.data(), block_size_);
         } else {
             buffer.resize(last_block_size_);
             file_.read((char *)buffer.data(), last_block_size_);
@@ -58,13 +58,16 @@ public:
 
     // return send speed, unit bytes/s
     double speed() {
-        return tftp::block_size * speed_monitor.speed();
+        return block_size_ * speed_monitor.speed();
     }
 
     bool set_option_blksize(uint16_t blksize) {
         if (blksize <= tftp::max_block_size && blksize >= tftp::min_block_size) {
             has_blksize_option_ = true;
             block_size_ = blksize;
+
+            block_number_ = size_ / block_size_ + 1;
+            last_block_size_ = size_ % block_size_;
             return true;
         } else {
             return false;
@@ -77,6 +80,7 @@ private:
 
     bool is_finished_ = false;
 
+    size_t size_;
     size_t last_block_size_;
     uint16_t block_number_;
     uint16_t block_sended_ = 0;
@@ -116,6 +120,7 @@ public:
             return false;
         } else {
             file_.write((char *)data.data().data(), data.data().size());
+            std::cout<<data.data().size()<<std::endl;
             if (data.data().size() < block_size_) {
                 is_finished_ = true;
             }
