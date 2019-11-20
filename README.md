@@ -7,7 +7,7 @@
 该项目不是TFTP的完整实现， 同时有一些细节与RFC不同。
 
 **支持的功能：**
-朝从
+
 - octet类型的TFTP读写请求处理，参见[RFC1350](https://tools.ietf.org/html/rfc1350)
 - 支持选项字段与oack的处理，参见[RFC2347](https://tools.ietf.org/html/rfc2347)
 - 支持tsize选项，参见[RFC2349](https://tools.ietf.org/html/rfc2349)
