@@ -116,7 +116,7 @@ public:
         speed_monitor.tick();
 
         auto block = data.block();
-        if (block != block_reveived_) {
+        if (block != block_received_) {
             return false;
         } else {
             file_.write((char *)data.data().data(), data.data().size());
@@ -125,7 +125,7 @@ public:
                 is_finished_ = true;
             }
 
-            block_reveived_ += 1;
+            block_received_ += 1;
             return true;
         }
     }
@@ -156,7 +156,7 @@ private:
     std::fstream file_;
 
     bool is_finished_ = false;
-    uint16_t block_reveived_ = 0;
+    uint16_t block_received_ = 0;
 
     SpeedMonitor speed_monitor;
 
